@@ -1,0 +1,51 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-user-channel
+      author: platform
+      comment: >
+        Каналы уведомлений пользователя. user_id — это Keycloak subject
+        (sub claim), общий идентификатор пользователя для всех сервисов.
+        Это НЕ foreign key: таблица пользователей лежит в БД другого
+        сервиса (database-per-service).
+      changes:
+        - createTable:
+            tableName: user_channel
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  # Для TELEGRAM — chat_id, для EMAIL — адрес
+                  name: destination
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: user_channel
+            columnNames: user_id, channel_type
+            constraintName: uq_user_channel_user_type

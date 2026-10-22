@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-check-result
+      author: platform
+      comment: >
+        Партиционирование по диапазону дат задаём через raw SQL: Liquibase createTable
+        не имеет декларативной абстракции для PARTITION BY, а изобретать генерацию
+        партиций на будущее прямо сейчас рано — на старте создаём одну партицию
+        "по умолчанию" (DEFAULT), а нарезку по месяцам добавим отдельной задачей,
+        когда объём данных реально этого потребует.
+      changes:
+        - sql:
+            sql: >
+              CREATE TABLE check_result (
+                id BIGSERIAL,
+                monitor_id UUID NOT NULL REFERENCES monitor(id),
+                checked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                status VARCHAR(10) NOT NULL,
+                response_time_ms INT,
+                status_code INT,
+                error_message TEXT,
+                PRIMARY KEY (id, checked_at)
+              ) PARTITION BY RANGE (checked_at);
+
+              CREATE TABLE check_result_default PARTITION OF check_result DEFAULT;
+
+              CREATE INDEX idx_check_result_monitor_checked_at
+              ON check_result (monitor_id, checked_at DESC);
+      rollback:
+        - sql:
+            sql: DROP TABLE check_result CASCADE

@@ -1,0 +1,82 @@
+{
+  "realm": "monitoring-platform",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Обычный пользователь платформы" }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "core-api-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "core-api-client-secret",
+      "clientAuthenticatorType": "client-secret",
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    },
+    {
+      "clientId": "web-ui-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "web-ui-client-secret",
+      "clientAuthenticatorType": "client-secret",
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:8083/login/oauth2/code/keycloak"],
+      "webOrigins": ["http://localhost:8083"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:8083/*"
+      }
+    },
+    {
+      "clientId": "web-ui-admin-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "web-ui-admin-client-secret",
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+
+  "users": [
+    {
+      "username": "testuser",
+      "enabled": true,
+      "email": "testuser@example.com",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "service-account-web-ui-admin-client",
+      "enabled": true,
+      "serviceAccountClientId": "web-ui-admin-client",
+      "clientRoles": {
+        "realm-management": ["manage-users"]
+      }
+    }
+  ]
+}

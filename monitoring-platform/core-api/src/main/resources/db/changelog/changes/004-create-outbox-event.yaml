@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-create-outbox-event
+      author: platform
+      comment: >
+        Transactional outbox: checker-worker пишет сюда событие в ТОЙ ЖЕ
+        транзакции, что обновляет monitor.current_status — это гарантирует
+        атомарность (либо оба изменения закоммитились, либо ни одно), решая
+        classic dual-write problem между "обновить статус" и "опубликовать
+        событие", которая возникла бы при раздельных не-транзакционных записях
+        в БД и в Kafka. Публикация в Kafka — отдельный процесс (Outbox
+        Publisher), который появится вместе с notification-service.
+      changes:
+        - createTable:
+            tableName: outbox_event
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  defaultValueComputed: gen_random_uuid()
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: aggregate_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_type
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: JSONB
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+              - column:
+                  # NULL = ещё не опубликовано. Публикующий процесс проставляет
+                  # значение после подтверждённой записи в Kafka.
+                  name: published_at
+                  type: TIMESTAMPTZ
+
+  - changeSet:
+      id: 004.1-create-outbox-unpublished-index
+      author: platform
+      comment: >
+        Частичный индекс — Outbox Publisher выбирает только неопубликованные
+        события (WHERE published_at IS NULL), тот же паттерн, что
+        idx_monitor_next_check в 002-create-monitor.yaml.
+      changes:
+        - sql:
+            sql: >
+              CREATE INDEX idx_outbox_unpublished
+              ON outbox_event (created_at)
+              WHERE published_at IS NULL
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_outbox_unpublished

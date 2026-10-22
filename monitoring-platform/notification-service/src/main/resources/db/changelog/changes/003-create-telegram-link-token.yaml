@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-create-telegram-link-token
+      author: platform
+      comment: >
+        Одноразовые токены привязки Telegram. Хранится SHA-256 от токена,
+        а не сам токен: утечка таблицы не даёт готовых ссылок для привязки.
+        Токен живёт 10 минут (срок задаёт код) и удаляется при использовании.
+      changes:
+        - createTable:
+            tableName: telegram_link_token
+            columns:
+              - column:
+                  name: token_hash
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: idx_telegram_link_token_user
+            tableName: telegram_link_token
+            columns:
+              - column:
+                  name: user_id

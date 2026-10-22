@@ -1,0 +1,45 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: notification-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/monitoring-platform
+  # СВОЯ БД (database-per-service): физически тот же контейнер Postgres,
+  # но отдельная база и отдельный пользователь, созданные init-скриптом.
+  # Порт 5334 — как в вашем docker-compose; проверьте, что он совпадает.
+  datasource:
+    url: jdbc:postgresql://localhost:5434/notification_service
+    username: notification_service
+    password: notification_service
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  kafka:
+    # Приложение запускается на хосте через mvn, поэтому внешний listener
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-service
+      # Для НОВОЙ consumer group начинаем с начала топика, иначе события,
+      # опубликованные до первого запуска сервиса, были бы пропущены
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.KafkaAvroDeserializer
+      properties:
+        schema.registry.url: http://localhost:8081
+        # Без этого десериализатор вернёт GenericRecord вместо MonitorStatusEvent
+        specific.avro.reader: true
+
+notification:
+  topic: monitor-status-events
+telegram:
+  bot-username: petrov_monitoring_bot
+  bot-token: ${TELEGRAM_BOT_TOKEN:}
+logging:
+  level:
+    com.monitoring.notificationservice: debug

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.monitoring</groupId>
+        <artifactId>monitoring-platform</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>checker-worker</artifactId>
+    <packaging>jar</packaging>
+
+    <!--
+        Этот сервис намеренно использует НЕ Spring Data JPA, а голый JdbcTemplate.
+        Причина: job queue паттерн (SELECT ... FOR UPDATE SKIP LOCKED) требует
+        точного контроля над SQL и транзакцией — Hibernate тут не даёт ничего
+        полезного (мы не маппим графы объектов, не нужен persistence context),
+        а только усложняет понимание того, что реально выполняется на БД.
+        Для простого, явного SQL-запроса JdbcTemplate — более подходящий
+        инструмент, чем JPA/Hibernate.
+
+        Делит одну физическую БД с core-api (читает/пишет таблицы monitor,
+        check_result, outbox_event) — миграции этой БД остаются в core-api,
+        здесь своего Liquibase нет, чтобы не было двух сервисов, пытающихся
+        одновременно мигрировать одну и ту же схему.
+    -->
+
+    <!-- kafka-avro-serializer от Confluent НЕ публикуется в Maven Central,
+         только в собственном репозитории Confluent. Без этого блока
+         зависимость ниже не разрешится. -->
+  <repositories>
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- БЕЗ scope=runtime (в отличие от обычного использования драйвера
+             через JDBC URL): MonitorJdbcRepository напрямую импортирует
+             org.postgresql.util.PGobject для записи JSONB-колонки, значит
+             драйвер нужен и на этапе компиляции, не только в рантайме. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+
+        <!-- Для сериализации payload outbox-события в JSON перед записью в JSONB -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- Общий контракт событий: сгенерированный из .avsc класс
+             MonitorStatusEvent. Тот же артефакт подключит notification-service. -->
+        <dependency>
+            <groupId>com.monitoring</groupId>
+            <artifactId>common-events</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Версию spring-kafka задаёт BOM Spring Boot -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- Версия НЕ управляется Spring Boot BOM, указываем явно.
+             7.6.x соответствует Confluent Platform 7.6, которую поднимает
+             наш docker-compose (cp-kafka / cp-schema-registry 7.6.0). -->
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-avro-serializer</artifactId>
+            <version>7.6.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.34</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

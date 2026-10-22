@@ -1,0 +1,6 @@
+# Git сам нормализует переводы строк текстовых файлов
+* text=auto
+
+# Shell-скрипты исполняются внутри Linux-контейнера: с CRLF (Windows) они
+# ломаются. Так уже было с infra/postgres-init/01-create-databases.sh.
+*.sh text eol=lf

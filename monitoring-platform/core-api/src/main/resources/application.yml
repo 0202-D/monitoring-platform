@@ -1,0 +1,42 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: core-api
+
+  datasource:
+    url: jdbc:postgresql://localhost:5434/core_api
+    username: core_api
+    password: core_api
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # ddl-auto НАМЕРЕННО validate: единственный источник правды по схеме — Liquibase.
+      # Hibernate должен только проверять соответствие, а не создавать/менять таблицы сам.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/monitoring-platform
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    liquibase: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

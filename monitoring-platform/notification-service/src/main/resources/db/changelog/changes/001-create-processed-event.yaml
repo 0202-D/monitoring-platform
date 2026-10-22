@@ -1,0 +1,33 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-processed-event
+      author: platform
+      comment: >
+        Журнал обработанных событий для идемпотентности. Kafka даёт
+        at-least-once, поэтому одно и то же событие может прийти дважды;
+        составной ключ (event_id, channel_type) позволяет атомарно
+        отсечь повтор для конкретного канала доставки.
+      changes:
+        - createTable:
+            tableName: processed_event
+            columns:
+              - column:
+                  name: event_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_processed_event
+                    nullable: false
+              - column:
+                  name: channel_type
+                  type: VARCHAR(20)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_processed_event
+                    nullable: false
+              - column:
+                  name: processed_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false

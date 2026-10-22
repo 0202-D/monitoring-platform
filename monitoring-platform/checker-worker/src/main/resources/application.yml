@@ -1,0 +1,50 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: checker-worker
+
+  # Та же физическая БД, что и core-api — checker-worker читает monitor,
+  # пишет check_result/outbox_event. Отдельных миграций здесь нет
+  # (см. комментарий в pom.xml), схему поддерживает core-api.
+  datasource:
+    url: jdbc:postgresql://localhost:5434/core_api
+    username: core_api
+    password: core_api
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      # Воркер держит соединения недолго (claim — быстрая транзакция),
+      # небольшой пул достаточен даже при сотнях виртуальных потоков
+      # проверок одновременно — они обращаются к БД только в момент
+      # записи результата, не держат соединение на всё время HTTP-запроса.
+      maximum-pool-size: 10
+  kafka:
+    # Приложение запущено на хосте через mvn, поэтому внешний listener
+    # localhost:9092, а не внутренний kafka:29092
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+        schema.registry.url: http://localhost:8081
+checker:
+  # Как часто планировщик опрашивает БД на предмет "кому пора проверяться"
+  poll-interval-ms: 5000
+  # Сколько мониторов забирать за один цикл опроса — защита от того,
+  # чтобы один воркер не захватил сразу тысячи задач и не держал их
+  # висящими, если упадёт на середине обработки батча
+  batch-size: 50
+  # Таймаут одной HTTP-проверки
+  http-timeout-seconds: 10
+
+outbox:
+  poll-interval-ms: 1000
+  batch-size: 100
+  send-timeout-seconds: 5
+
+logging:
+  level:
+    com.monitoring.checkerworker: debug

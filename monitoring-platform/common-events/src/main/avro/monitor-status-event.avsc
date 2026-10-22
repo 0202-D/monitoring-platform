@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "MonitorStatusEvent",
+  "namespace": "com.monitoring.events",
+  "doc": "Публикуется при РЕАЛЬНОМ изменении статуса монитора (не на каждой проверке)",
+  "fields": [
+    { "name": "eventId", "type": "string",
+      "doc": "UUID события, он же ключ идемпотентности для consumer'ов" },
+    { "name": "monitorId", "type": "string" },
+    { "name": "userId", "type": "string" },
+    { "name": "eventType", "type": {
+        "type": "enum",
+        "name": "EventType",
+        "symbols": ["MONITOR_DOWN", "MONITOR_UP", "SSL_EXPIRING"]
+      }
+    },
+    { "name": "targetUrl", "type": "string" },
+    { "name": "occurredAt", "type": "long", "logicalType": "timestamp-millis" },
+    { "name": "details", "type": ["null", "string"], "default": null,
+      "doc": "Например, текст ошибки при DOWN или дата истечения SSL" }
+  ]
+}

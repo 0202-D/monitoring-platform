@@ -1,0 +1,43 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: web-ui
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: web-ui-client
+            client-secret: web-ui-client-secret
+            authorization-grant-type: authorization_code
+            scope: openid, profile, email
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8180/realms/monitoring-platform
+
+# Свои, не Spring-стандартные настройки — для вызова Keycloak Admin REST API
+# из RegistrationService (создание пользователей). Обратите внимание: тут
+# используется ОТДЕЛЬНЫЙ client (web-ui-admin-client) с Client Credentials
+# grant, а не web-ui-client — тот вообще не предназначен для этого flow.
+keycloak:
+  admin:
+    base-url: http://localhost:8180
+    realm: monitoring-platform
+    token-url: http://localhost:8180/realms/monitoring-platform/protocol/openid-connect/token
+    client-id: web-ui-admin-client
+    client-secret: web-ui-admin-client-secret
+
+vaadin:
+  launch-browser: true
+
+# URL core-api — сюда CoreApiClient стучится от лица залогиненного
+# пользователя (с его access token) за списком/созданием мониторов.
+core-api:
+  base-url: http://localhost:8082
+logging:
+  level:
+    org.springframework.security: DEBUG

@@ -1,0 +1,84 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-create-monitor
+      author: platform
+      changes:
+        - createTable:
+            tableName: monitor
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_monitor_user
+                    references: app_user(id)
+              - column:
+                  name: type
+                  type: VARCHAR(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_url
+                  type: VARCHAR(2048)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: check_interval_seconds
+                  type: INT
+                  defaultValue: 300
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: current_status
+                  type: VARCHAR(10)
+                  defaultValue: UNKNOWN
+                  constraints:
+                    nullable: false
+              - column:
+                  name: consecutive_failures
+                  type: INT
+                  defaultValue: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: next_check_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 002.1-create-monitor-next-check-index
+      author: platform
+      comment: >
+        Частичный (partial) индекс под job queue паттерн (Checker Worker будет делать
+        SELECT ... WHERE next_check_at <= now() AND is_active = true FOR UPDATE SKIP LOCKED).
+        Используем raw SQL, а не абстракцию createIndex: WHERE-условие для partial index
+        не гарантированно переносимо через changeType createIndex между СУБД, а Postgres
+        здесь наш единственный целевой диалект — честнее и надёжнее написать SQL напрямую.
+      changes:
+        - sql:
+            sql: >
+              CREATE INDEX idx_monitor_next_check
+              ON monitor (next_check_at)
+              WHERE is_active = true
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_monitor_next_check

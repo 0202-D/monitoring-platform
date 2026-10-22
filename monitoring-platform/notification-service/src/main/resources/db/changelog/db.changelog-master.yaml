@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-processed-event.yaml
+  - include:
+      file: db/changelog/changes/002-create-user-channel.yaml
+  - include:
+      file: db/changelog/changes/003-create-telegram-link-token.yaml
