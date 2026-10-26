@@ -6,6 +6,8 @@ import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.RouterLink;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 
 public class MainLayout extends AppLayout {
@@ -16,6 +18,10 @@ public class MainLayout extends AppLayout {
 
         Anchor logout = new Anchor("/logout", "Выйти");
         logout.addClassNames(LumoUtility.Margin.MEDIUM);
+        // /logout обрабатывает Spring Security, а не Vaadin-роутер: без
+        // router-ignore клик перехватывается как SPA-навигация
+        // (та же причина, что и у ссылки на вход через Keycloak).
+        logout.getElement().setAttribute("router-ignore", true);
 
         HorizontalLayout header = new HorizontalLayout(new DrawerToggle(), title, logout);
         header.setWidthFull();
@@ -23,5 +29,12 @@ public class MainLayout extends AppLayout {
         header.expand(title);
 
         addToNavbar(header);
+
+        VerticalLayout navigation = new VerticalLayout(
+            new RouterLink("Мониторы", MonitorsView.class),
+            new RouterLink("Настройки", SettingsView.class)
+        );
+        navigation.setPadding(true);
+        addToDrawer(navigation);
     }
 }
