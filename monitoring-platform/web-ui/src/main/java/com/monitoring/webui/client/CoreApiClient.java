@@ -31,13 +31,13 @@ import java.util.UUID;
 public class CoreApiClient {
 
     private final RestClient restClient;
-    private final OAuth2AuthorizedClientManager authorizedClientManager;
+    private final AccessTokenProvider accessTokenProvider;
 
     public CoreApiClient(
             @Value("${core-api.base-url}") String coreApiBaseUrl,
-            OAuth2AuthorizedClientManager authorizedClientManager) {
+            AccessTokenProvider accessTokenProvider) {
         this.restClient = RestClient.builder().baseUrl(coreApiBaseUrl).build();
-        this.authorizedClientManager = authorizedClientManager;
+        this.accessTokenProvider = accessTokenProvider;
     }
 
     public List<MonitorDto> listMonitors() {
@@ -124,26 +124,8 @@ public class CoreApiClient {
         }
     }
 
-    /**
-     * Достаёт access token текущего пользователя из HTTP-сессии, при
-     * необходимости прозрачно обновляя его по refresh token
-     * (см. OAuth2ClientConfig — .refreshToken() в цепочке провайдеров).
-     */
     private String currentAccessToken() {
-        var authentication = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
-
-        OAuth2AuthorizeRequest authorizeRequest = OAuth2AuthorizeRequest
-            .withClientRegistrationId(authentication.getAuthorizedClientRegistrationId())
-            .principal(authentication)
-            .build();
-
-        OAuth2AuthorizedClient authorizedClient = authorizedClientManager.authorize(authorizeRequest);
-        if (authorizedClient == null) {
-            throw new IllegalStateException("Не удалось получить access token текущего пользователя");
-        }
-
-        OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
-        return accessToken.getTokenValue();
+        return accessTokenProvider.currentAccessToken();
     }
 
     public static class CoreApiException extends RuntimeException {
