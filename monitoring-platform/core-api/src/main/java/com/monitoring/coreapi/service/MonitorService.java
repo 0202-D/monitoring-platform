@@ -27,6 +27,7 @@ public class MonitorService {
 
     @Transactional
     public Monitor createMonitor(AppUser owner, Monitor.MonitorType type, String targetUrl, int intervalSeconds) {
+        targetUrl = MonitorTargetValidator.normalizeAndValidate(type, targetUrl);
         if (owner.getPlan() == AppUser.Plan.FREE) {
             long existing = monitorRepository.findByUserId(owner.getId()).size();
             if (existing >= FREE_PLAN_MONITOR_LIMIT) {
@@ -44,7 +45,7 @@ public class MonitorService {
     public Monitor updateMonitor(UUID monitorId, UUID requesterId, String targetUrl,
                                  int checkIntervalSeconds, boolean active) {
         Monitor monitor = findOwnedOrThrow(monitorId, requesterId);
-
+        targetUrl = MonitorTargetValidator.normalizeAndValidate(monitor.getType(), targetUrl);
         monitor.setTargetUrl(targetUrl);
         monitor.setCheckIntervalSeconds(checkIntervalSeconds);
         // next_check_at сознательно не трогаем при обычном редактировании —

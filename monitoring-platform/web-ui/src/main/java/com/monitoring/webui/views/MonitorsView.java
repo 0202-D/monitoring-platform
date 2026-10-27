@@ -223,6 +223,15 @@ public class MonitorsView extends VerticalLayout {
         dialog.add(form);
 
         Button save = new Button("Сохранить", e -> {
+            String error = TargetUrlValidator.validate(
+                    monitor.type(),
+                    targetUrl.getValue()
+            );
+
+            if (error != null) {
+                showError(error);
+                return;
+            }
             if (targetUrl.isEmpty()) {
                 showError("Укажите URL или хост монитора");
                 return;
@@ -298,6 +307,16 @@ public class MonitorsView extends VerticalLayout {
         dialog.add(form);
 
         Button save = new Button("Создать", e -> {
+            String error = TargetUrlValidator.validate(
+                    type.getValue(),
+                    targetUrl.getValue()
+            );
+
+            if (error != null) {
+                showError(error);
+                return;
+            }
+
             if (targetUrl.isEmpty()) {
                 showError("Укажите URL или хост монитора");
                 return;
