@@ -35,13 +35,20 @@ public class MonitorJdbcRepository {
     private int failureThreshold;
 
     /**
+     * Пауза между повторными проверками, пока сбой не подтверждён.
+     * Намного короче обычного интервала монитора: иначе подтверждение
+     * сбоя растянулось бы на N интервалов (при интервале 5 минут — на 10+ минут).
+     */
+    @Value("${checker.retry-interval-seconds:15}")
+    private int retryIntervalSeconds;
+
+    /**
      * Захватывает батч мониторов, которым пора проверяться, и СРАЗУ ЖЕ
      * (в этой же транзакции) отодвигает им next_check_at вперёд — захват
      * задачи (быстрый, под локом) отделён от её выполнения (медленное
      * сетевое I/O, уже без лока на БД). Если бы next_check_at обновлялся
      * только ПОСЛЕ проверки, другой воркер (или следующий цикл опроса)
      * мог бы забрать тот же монитор повторно, пока первая проверка идёт.
-     *
      * FOR UPDATE OF m SKIP LOCKED: строки, уже заблокированные другой
      * транзакцией, пропускаются, а не ожидаются. "OF m" обязателен после
      * добавления JOIN: без него PostgreSQL заблокировал бы и строки
@@ -131,14 +138,33 @@ public class MonitorJdbcRepository {
             newStatus = monitor.currentStatus();
         }
 
-        jdbcTemplate.update(
-                """
-                UPDATE monitor
-                SET current_status = ?, consecutive_failures = ?
-                WHERE id = ?
-                """,
-                newStatus, newConsecutiveFailures, monitor.id()
-        );
+        // Сбой есть, но порог ещё не достигнут: монитор ждёт подтверждения,
+        // поэтому перепроверяем скоро, не дожидаясь обычного интервала.
+        boolean awaitingConfirmation = checkFailed && newConsecutiveFailures < failureThreshold;
+
+        if (awaitingConfirmation) {
+            // claimDueMonitors уже отодвинул next_check_at на обычный интервал;
+            // здесь перезаписываем его на короткую паузу повторной проверки.
+            jdbcTemplate.update(
+                    """
+                    UPDATE monitor
+                    SET current_status = ?,
+                        consecutive_failures = ?,
+                        next_check_at = now() + (? * interval '1 second')
+                    WHERE id = ?
+                    """,
+                    newStatus, newConsecutiveFailures, retryIntervalSeconds, monitor.id()
+            );
+        } else {
+            jdbcTemplate.update(
+                    """
+                    UPDATE monitor
+                    SET current_status = ?, consecutive_failures = ?
+                    WHERE id = ?
+                    """,
+                    newStatus, newConsecutiveFailures, monitor.id()
+            );
+        }
 
         boolean statusChanged = !newStatus.equals(monitor.currentStatus());
         if (statusChanged) {
