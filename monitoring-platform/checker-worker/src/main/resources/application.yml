@@ -39,6 +39,8 @@ checker:
   batch-size: 50
   # Таймаут одной HTTP-проверки
   http-timeout-seconds: 10
+  failure-threshold: 3
+  retry-interval-seconds: 15
 
 outbox:
   poll-interval-ms: 1000
