@@ -31,7 +31,7 @@ jobs:
 
       # web-ui исключён: его сборка запускает prepare-frontend и ставит npm-зависимости Vaadin
       - name: Build and test
-        run: mvn -B -ntp verify -pl '!./web-ui'
+        run: mvn -B -ntp verify -pl '!web-ui'
 
       - name: Upload test reports
         if: failure()
