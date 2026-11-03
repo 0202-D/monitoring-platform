@@ -22,12 +22,7 @@ import java.util.List;
  *
  * Схема создаётся ТЕМИ ЖЕ миграциями Liquibase, что и в core-api: копия схемы
  * в тестовых ресурсах рано или поздно разошлась бы с настоящей.
- *
- * Примечание про Docker: Testcontainers старше 1.21.4 не работают с Docker 29+
- * (он поднял минимальную версию API до 1.44). Версия из BOM Spring Boot 3.3
- * подходит для Docker Desktop 4.x с движком 27/28; при переходе на Docker 29
- * поднимите Testcontainers до 1.21.4 и выше.
- */
+**/
 public final class PostgresTestDatabase {
 
     private static PostgreSQLContainer<?> container;
