@@ -29,9 +29,31 @@ jobs:
           java-version: "21"
           cache: maven
 
-      # web-ui исключён: его сборка запускает prepare-frontend и ставит npm-зависимости Vaadin
+      # ===== ДИАГНОСТИКА: показываем, что видит CI =====
+      - name: Debug - Show current directory and files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Files in root ==="
+          ls -la
+          echo "=== Git branch ==="
+          git branch --show-current
+          echo "=== Git log (last 3 commits) ==="
+          git log --oneline -3
+
+      - name: Debug - Show root pom.xml modules section
+        run: |
+          echo "=== Modules in root pom.xml ==="
+          grep -A 20 "<modules>" pom.xml || echo "No <modules> section found!"
+          echo "=== Full pom.xml (first 100 lines) ==="
+          head -n 100 pom.xml
+
+      - name: Debug - List all Maven reactor modules
+        run: mvn -B -ntp validate | grep -A 50 "Reactor Build Order"
+      # ===== КОНЕЦ ДИАГНОСТИКИ =====
+
       - name: Build and test
-        run: "mvn -B -ntp verify -pl '!web-ui'"
+        run: mvn -B -ntp verify -pl '!web-ui'
 
       - name: Upload test reports
         if: failure()
