@@ -232,4 +232,14 @@ class MonitorJdbcRepositoryIntegrationTest extends AbstractPostgresIntegrationTe
                 + "payload->>'userId' AS user_id, payload->>'details' AS details "
                 + "FROM outbox_event ORDER BY created_at");
     }
+
+    @Test
+    void firstSuccessfulCheckOfNewMonitorDoesNotAlert() {
+        UUID id = insertMonitor("UNKNOWN", 0, AFTER_CLAIM, true);
+
+        repository.recordCheckOutcome(dueMonitor(id, "UNKNOWN", 0), CheckResult.up(120, 200));
+
+        assertThat(statusOf(id)).isEqualTo("UP");
+        assertThat(outboxEvents()).isEmpty();
+    }
 }

@@ -167,7 +167,11 @@ public class MonitorJdbcRepository {
         }
 
         boolean statusChanged = !newStatus.equals(monitor.currentStatus());
-        if (statusChanged) {
+        // Первая успешная проверка нового монитора (UNKNOWN -> UP) не событие:
+        // ничего не восстанавливалось, и «снова доступен» здесь вводит в заблуждение.
+        // А вот UNKNOWN -> DOWN уведомляет по-прежнему.
+        boolean firstSuccess = "UNKNOWN".equals(monitor.currentStatus()) && "UP".equals(newStatus);
+        if (statusChanged && !firstSuccess) {
             insertOutboxEvent(monitor, newStatus, result.errorMessage());
         }
     }
