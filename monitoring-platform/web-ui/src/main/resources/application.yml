@@ -40,6 +40,3 @@ core-api:
   base-url: http://localhost:8082
 notification-service:
   base-url: http://localhost:8085
-logging:
-  level:
-    org.springframework.security: DEBUG
