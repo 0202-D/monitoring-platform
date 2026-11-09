@@ -21,8 +21,9 @@ public class NotificationApiClient {
 
     public NotificationApiClient(
             @Value("${notification-service.base-url}") String baseUrl,
+            RestClient.Builder restClientBuilder,
             AccessTokenProvider accessTokenProvider) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
         this.accessTokenProvider = accessTokenProvider;
     }
 

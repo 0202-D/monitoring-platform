@@ -35,8 +35,11 @@ public class CoreApiClient {
 
     public CoreApiClient(
             @Value("${core-api.base-url}") String coreApiBaseUrl,
+            RestClient.Builder restClientBuilder,
             AccessTokenProvider accessTokenProvider) {
-        this.restClient = RestClient.builder().baseUrl(coreApiBaseUrl).build();
+        // Билдер выдаёт Spring (а не RestClient.builder()): только он подключает
+        // трассировку и передаёт заголовок traceparent в исходящих запросах
+        this.restClient = restClientBuilder.baseUrl(coreApiBaseUrl).build();
         this.accessTokenProvider = accessTokenProvider;
     }
 
