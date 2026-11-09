@@ -30,13 +30,23 @@ spring:
         jwt:
           issuer-uri: http://localhost:8180/realms/monitoring-platform
 
-logging:
-  level:
-    org.hibernate.SQL: debug
-    liquibase: info
-
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  tracing:
+    sampling:
+      # 1.0 = трассируем каждый запрос. Для разработки удобно, в проде значение уменьшают.
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+
+logging:
+  pattern:
+    # traceId и spanId в каждой строке лога: по ним строка лога находится в Zipkin
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}] "
+  level:
+    org.hibernate.SQL: debug
+    liquibase: info
