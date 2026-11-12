@@ -34,7 +34,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    distribution:
+      # Без гистограммы нельзя посчитать p95 задержки в Grafana
+      percentiles-histogram:
+        http.server.requests: true
   tracing:
     sampling:
       # 1.0 = трассируем каждый запрос. Для разработки удобно, в проде значение уменьшают.
