@@ -11,7 +11,7 @@ spring:
           issuer-uri: http://localhost:8180/realms/monitoring-platform
   # СВОЯ БД (database-per-service): физически тот же контейнер Postgres,
   # но отдельная база и отдельный пользователь, созданные init-скриптом.
-  # Порт 5334 — как в вашем docker-compose; проверьте, что он совпадает.
+  # Порт 5434 — как в вашем docker-compose; проверьте, что он совпадает.
   datasource:
     url: jdbc:postgresql://localhost:5434/notification_service
     username: notification_service
@@ -43,3 +43,8 @@ telegram:
 logging:
   level:
     com.monitoring.notificationservice: debug
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

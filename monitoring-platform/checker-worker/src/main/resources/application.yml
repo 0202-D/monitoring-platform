@@ -50,3 +50,9 @@ outbox:
 logging:
   level:
     com.monitoring.checkerworker: debug
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

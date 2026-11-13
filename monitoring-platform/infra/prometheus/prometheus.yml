@@ -3,8 +3,8 @@ global:
 
 # Сервисы запускаются на хост-машине через mvn, а Prometheus живёт в контейнере,
 # поэтому адреса — host.docker.internal (на Docker Desktop это хост-машина).
-# Метка application задаётся здесь, а не в самих сервисах: по ней дашборд
-# различает сервисы.
+# Метка application задаётся здесь, а не в самих сервисах: по ней дашборды
+# различают сервисы.
 scrape_configs:
   - job_name: core-api
     metrics_path: /actuator/prometheus
@@ -13,7 +13,23 @@ scrape_configs:
         labels:
           application: core-api
 
-  # Следующие сервисы подключим следующим шагом:
-  # - job_name: notification-service  (host.docker.internal:8085)
-  # - job_name: web-ui                (host.docker.internal:8083)
-  # - job_name: checker-worker        (host.docker.internal:8084)
+  - job_name: checker-worker
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8084"]
+        labels:
+          application: checker-worker
+
+  - job_name: notification-service
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8085"]
+        labels:
+          application: notification-service
+
+  - job_name: web-ui
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
+        labels:
+          application: web-ui
