@@ -32,8 +32,13 @@ public class SecurityConfig extends VaadinWebSecurity {
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        super.configure(http); // база от Vaadin — обязательно вызывать первой
+        // Метрики открыты для Prometheus (у него нет сессии Keycloak). Правило обязательно
+        // до super.configure(http). AntPathRequestMatcher, а не строка: при нескольких
+        // сервлетах (Vaadin и DispatcherServlet) строковая форма неоднозначна.
+        http.authorizeHttpRequests(auth -> auth
+                .requestMatchers(new AntPathRequestMatcher("/actuator/prometheus")).permitAll());
 
+        super.configure(http); // база от Vaadin
         // Известная несовместимость Vaadin с дефолтной CSRF-стратегией
         // Spring Security 6: там токен вычисляется ЛЕНИВО (deferred, ради
         // защиты от BREACH-атак) — реально сохраняется в сессию, только

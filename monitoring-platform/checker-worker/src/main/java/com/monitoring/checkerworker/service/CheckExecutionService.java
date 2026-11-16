@@ -4,12 +4,15 @@ import com.monitoring.checkerworker.checks.CheckResult;
 import com.monitoring.checkerworker.checks.CheckerRegistry;
 import com.monitoring.checkerworker.repository.DueMonitor;
 import com.monitoring.checkerworker.repository.MonitorJdbcRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,6 +34,7 @@ public class CheckExecutionService {
 
     private final CheckerRegistry checkerRegistry;
     private final MonitorJdbcRepository repository;
+    private final MeterRegistry meterRegistry;
 
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -54,7 +58,16 @@ public class CheckExecutionService {
         }
 
         try {
+            Timer.Sample sample = Timer.start(meterRegistry);
             CheckResult result = checker.get().check(monitor.targetUrl());
+            sample.stop(Timer.builder("monitor.check.duration")
+                    .description("Длительность выполнения проверки монитора")
+                    .tag("type", monitor.type())
+                    .publishPercentileHistogram()
+                    .register(meterRegistry));
+            meterRegistry.counter("monitor.checks",
+                    "type", monitor.type(),
+                    "result", result.status().name().toLowerCase(Locale.ROOT)).increment();
             repository.recordCheckOutcome(monitor, result);
         } catch (Exception e) {
             // Любое необработанное исключение здесь (например, сбой самой

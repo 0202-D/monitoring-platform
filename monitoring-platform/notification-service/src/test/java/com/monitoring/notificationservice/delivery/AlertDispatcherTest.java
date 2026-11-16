@@ -5,6 +5,7 @@ import com.monitoring.events.MonitorStatusEvent;
 import com.monitoring.notificationservice.channel.UserChannelRepository;
 import com.monitoring.notificationservice.telegram.TelegramApiClient;
 import com.monitoring.notificationservice.telegram.TelegramApiException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,10 +43,13 @@ class AlertDispatcherTest {
 
     private AlertDispatcher dispatcher;
 
+    private SimpleMeterRegistry meterRegistry;
+
     @BeforeEach
     void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
         dispatcher = new AlertDispatcher(
-            channelRepository, processedEventRepository, new AlertMessageFormatter(), telegramApi);
+                channelRepository, processedEventRepository, new AlertMessageFormatter(), telegramApi, meterRegistry);
     }
 
     @Test
@@ -57,6 +62,7 @@ class AlertDispatcherTest {
 
         verify(telegramApi).sendMessage(eq(12345L), contains("Монитор недоступен"));
         verify(processedEventRepository).markProcessed("event-1", TELEGRAM);
+        assertThat(meterRegistry.counter("alerts.delivered", "channel", "telegram").count()).isEqualTo(1.0);
     }
 
     @Test
@@ -70,6 +76,7 @@ class AlertDispatcherTest {
 
         verify(telegramApi, never()).sendMessage(anyLong(), anyString());
         verify(processedEventRepository, never()).markProcessed(anyString(), anyString());
+        assertThat(meterRegistry.counter("alerts.skipped", "reason", "duplicate").count()).isEqualTo(1.0);
     }
 
     @Test

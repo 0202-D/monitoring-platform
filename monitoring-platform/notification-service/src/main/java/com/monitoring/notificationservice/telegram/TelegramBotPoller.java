@@ -1,6 +1,9 @@
 package com.monitoring.notificationservice.telegram;
 
 import com.monitoring.notificationservice.telegram.TelegramModels.Update;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -18,6 +21,14 @@ import java.util.List;
  *
  * SmartLifecycle запускает цикл после полной инициализации контекста (БД и
  * Liquibase уже готовы) и останавливает его при завершении приложения.
+ *
+ * Метрики здоровья связи с Telegram:
+ *   telegram.poll.last.success.age — секунд с последнего успешного ответа getUpdates.
+ *       Опрос идёт непрерывно (запросы по 30 с), поэтому в норме значение не больше
+ *       30-35 секунд; рост означает, что Telegram недоступен или токен неверен.
+ *   telegram.poll.failures — число неудачных опросов.
+ * Если токен не задан, метрики не регистрируются: "нет данных" честнее, чем
+ * растущий возраст, похожий на аварию.
  */
 @Component
 public class TelegramBotPoller implements SmartLifecycle {
@@ -29,13 +40,17 @@ public class TelegramBotPoller implements SmartLifecycle {
 
     private final TelegramApiClient api;
     private final TelegramUpdateHandler handler;
+    private final MeterRegistry meterRegistry;
 
     private volatile boolean running;
+    private volatile long lastSuccessMillis;
+    private Counter pollFailures;
     private Thread thread;
 
-    public TelegramBotPoller(TelegramApiClient api, TelegramUpdateHandler handler) {
+    public TelegramBotPoller(TelegramApiClient api, TelegramUpdateHandler handler, MeterRegistry meterRegistry) {
         this.api = api;
         this.handler = handler;
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
@@ -46,6 +61,19 @@ public class TelegramBotPoller implements SmartLifecycle {
             log.warn("TELEGRAM_BOT_TOKEN не задан: приём сообщений бота отключён");
             return;
         }
+
+        // Точкой отсчёта считаем момент запуска: пока первый опрос не завершился,
+        // возраст растёт от старта сервиса, а не от нуля эпохи
+        lastSuccessMillis = System.currentTimeMillis();
+        pollFailures = Counter.builder("telegram.poll.failures")
+            .description("Неудачные опросы Telegram (getUpdates)")
+            .register(meterRegistry);
+        Gauge.builder("telegram.poll.last.success.age", this,
+                poller -> (System.currentTimeMillis() - poller.lastSuccessMillis) / 1000.0)
+            .baseUnit("seconds")
+            .description("Секунд с последнего успешного ответа Telegram")
+            .register(meterRegistry);
+
         running = true;
         thread = new Thread(this::pollLoop, "telegram-poller");
         thread.setDaemon(true);
@@ -76,6 +104,8 @@ public class TelegramBotPoller implements SmartLifecycle {
         while (running) {
             try {
                 List<Update> updates = api.getUpdates(offset, POLL_TIMEOUT_SECONDS);
+                lastSuccessMillis = System.currentTimeMillis();
+
                 for (Update update : updates) {
                     // Сдвигаем offset ДО обработки: сбойное обновление
                     // не должно приходить снова и блокировать очередь.
@@ -90,6 +120,7 @@ public class TelegramBotPoller implements SmartLifecycle {
                 if (!running) {
                     return;
                 }
+                pollFailures.increment();
                 log.warn("Сбой long polling Telegram: {}", e.getMessage());
                 sleepQuietly(ERROR_BACKOFF_MS);
             }
