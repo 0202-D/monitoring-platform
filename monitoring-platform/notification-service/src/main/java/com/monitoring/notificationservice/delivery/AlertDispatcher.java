@@ -4,11 +4,13 @@ import com.monitoring.events.MonitorStatusEvent;
 import com.monitoring.notificationservice.channel.UserChannelRepository;
 import com.monitoring.notificationservice.telegram.TelegramApiClient;
 import com.monitoring.notificationservice.telegram.TelegramApiException;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,6 +54,16 @@ public class AlertDispatcher {
         this.formatter = formatter;
         this.telegramApi = telegramApi;
         this.meterRegistry = meterRegistry;
+        // Регистрируем счётчики заранее, с нулём: иначе ряд появляется только после
+        // первого события, на панелях до этого пусто, а Prometheus может не засчитать
+        // самое первое увеличение (у rate/increase нет предыдущей точки).
+        Counter.builder("alerts.delivered").tag("channel", CHANNEL_TAG).register(meterRegistry);
+        for (String kind : List.of("transient", "permanent")) {
+            Counter.builder("alerts.failed").tag("channel", CHANNEL_TAG).tag("kind", kind).register(meterRegistry);
+        }
+        for (String reason : List.of("no_channel", "duplicate", "bot_not_configured", "invalid_user_id")) {
+            Counter.builder("alerts.skipped").tag("reason", reason).register(meterRegistry);
+        }
     }
 
     public void dispatch(MonitorStatusEvent event) {

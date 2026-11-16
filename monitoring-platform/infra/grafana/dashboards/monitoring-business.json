@@ -6,7 +6,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "15s",
   "time": {
     "from": "now-1h",
@@ -16,7 +16,7 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Мониторов UP",
+      "title": "Сервисов недоступно",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -24,12 +24,217 @@
       "gridPos": {
         "x": 0,
         "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "count(up == 0) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "ERROR в логах за 15 мин",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(logback_events_total{level=\"error\"}[15m])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Сбоев доставки алертов за 15 мин",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(alerts_failed_total[15m])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Потеряно алертов за 1 час",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(alerts_dropped_total[1h])) or vector(0)",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Мониторов UP",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
         "w": 8,
         "h": 4
       },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -59,7 +264,7 @@
       ]
     },
     {
-      "id": 2,
+      "id": 6,
       "type": "stat",
       "title": "Мониторов DOWN",
       "datasource": {
@@ -68,13 +273,14 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 0,
+        "y": 4,
         "w": 8,
         "h": 4
       },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -108,7 +314,7 @@
       ]
     },
     {
-      "id": 3,
+      "id": 7,
       "type": "stat",
       "title": "Мониторов UNKNOWN (ещё не подтверждены)",
       "datasource": {
@@ -117,13 +323,14 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 4,
         "w": 8,
         "h": 4
       },
       "fieldConfig": {
         "defaults": {
           "unit": "none",
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -153,7 +360,7 @@
       ]
     },
     {
-      "id": 4,
+      "id": 8,
       "type": "timeseries",
       "title": "Проверок в секунду по результату",
       "datasource": {
@@ -162,7 +369,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 8,
         "w": 12,
         "h": 8
       },
@@ -194,7 +401,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 9,
       "type": "timeseries",
       "title": "Доля неуспешных проверок",
       "datasource": {
@@ -203,7 +410,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 4,
+        "y": 8,
         "w": 12,
         "h": 8
       },
@@ -235,7 +442,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 10,
       "type": "timeseries",
       "title": "Длительность проверки, p95",
       "datasource": {
@@ -244,7 +451,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 16,
         "w": 12,
         "h": 8
       },
@@ -276,7 +483,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 11,
       "type": "timeseries",
       "title": "Outbox: неопубликованные события",
       "datasource": {
@@ -285,7 +492,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 16,
         "w": 12,
         "h": 8
       },
@@ -317,7 +524,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 12,
       "type": "timeseries",
       "title": "Outbox: возраст самого старого неопубликованного события",
       "datasource": {
@@ -326,7 +533,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 24,
         "w": 12,
         "h": 8
       },
@@ -358,7 +565,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 13,
       "type": "timeseries",
       "title": "Алерты за 5 минут",
       "datasource": {
@@ -367,7 +574,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 20,
+        "y": 24,
         "w": 12,
         "h": 8
       },
@@ -413,11 +620,20 @@
           "expr": "sum by (reason) (increase(alerts_skipped_total[5m]))",
           "legendFormat": "пропущено: {{reason}}",
           "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(alerts_dropped_total[5m]))",
+          "legendFormat": "ПОТЕРЯНО",
+          "refId": "D"
         }
       ]
     },
     {
-      "id": 10,
+      "id": 14,
       "type": "timeseries",
       "title": "Kafka: отставание консьюмера notification-service (сообщений)",
       "datasource": {
@@ -426,8 +642,8 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
-        "w": 24,
+        "y": 32,
+        "w": 12,
         "h": 8
       },
       "fieldConfig": {
@@ -454,6 +670,56 @@
           "expr": "max(kafka_consumer_fetch_manager_records_lag_max{application=\"notification-service\"})",
           "legendFormat": "lag",
           "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Ошибки и предупреждения в логах (за 5 минут)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (application) (increase(logback_events_total{level=\"error\"}[5m]))",
+          "legendFormat": "ERROR {{application}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (application) (increase(logback_events_total{level=\"warn\"}[5m]))",
+          "legendFormat": "WARN {{application}}",
+          "refId": "B"
         }
       ]
     }
