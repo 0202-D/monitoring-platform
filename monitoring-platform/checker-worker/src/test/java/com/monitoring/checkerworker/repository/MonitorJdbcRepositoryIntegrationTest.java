@@ -47,9 +47,9 @@ class MonitorJdbcRepositoryIntegrationTest extends AbstractPostgresIntegrationTe
         List<DueMonitor> claimed = repository.claimDueMonitors(10);
 
         assertThat(claimed).hasSize(1);
-        assertThat(claimed.get(0).id()).isEqualTo(id);
+        assertThat(claimed.getFirst().id()).isEqualTo(id);
         // в событиях участвует Keycloak sub, а не внутренний app_user.id
-        assertThat(claimed.get(0).userSubject()).isEqualTo(SUBJECT);
+        assertThat(claimed.getFirst().userSubject()).isEqualTo(SUBJECT);
         assertThat(nextCheckBetween(id, 290, 310)).isTrue();
     }
 
@@ -129,7 +129,7 @@ class MonitorJdbcRepositoryIntegrationTest extends AbstractPostgresIntegrationTe
 
         List<Map<String, Object>> events = outboxEvents();
         assertThat(events).hasSize(1);
-        assertThat(events.get(0))
+        assertThat(events.getFirst())
             .containsEntry("event_type", "MONITOR_DOWN")
             .containsEntry("aggregate_id", id.toString())
             .containsEntry("user_id", SUBJECT)
@@ -241,5 +241,15 @@ class MonitorJdbcRepositoryIntegrationTest extends AbstractPostgresIntegrationTe
 
         assertThat(statusOf(id)).isEqualTo("UP");
         assertThat(outboxEvents()).isEmpty();
+    }
+    @Test
+    void storesTraceContextWithOutboxEvent() {
+        UUID id = insertMonitor("UP", 2, AFTER_CLAIM, true);
+        String traceContext = "{\"traceparent\":\"00-6afc4968c8c694faf4abf313b22ce18b-f4abf313b22ce18b-01\"}";
+
+        repository.recordCheckOutcome(dueMonitor(id, "UP", 2), CheckResult.down("boom"), traceContext);
+
+        assertThat(jdbc.queryForObject("SELECT trace_context FROM outbox_event", String.class))
+                .isEqualTo(traceContext);
     }
 }

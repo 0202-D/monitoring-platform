@@ -6,6 +6,7 @@ import com.monitoring.notificationservice.channel.UserChannelRepository;
 import com.monitoring.notificationservice.telegram.TelegramApiClient;
 import com.monitoring.notificationservice.telegram.TelegramApiException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,7 +50,8 @@ class AlertDispatcherTest {
     void setUp() {
         meterRegistry = new SimpleMeterRegistry();
         dispatcher = new AlertDispatcher(
-                channelRepository, processedEventRepository, new AlertMessageFormatter(), telegramApi, meterRegistry);
+                channelRepository, processedEventRepository, new AlertMessageFormatter(), telegramApi,
+                meterRegistry, ObservationRegistry.NOOP);
     }
 
     @Test
