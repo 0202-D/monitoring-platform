@@ -6,6 +6,8 @@ import com.monitoring.notificationservice.telegram.TelegramApiClient;
 import com.monitoring.notificationservice.telegram.TelegramApiException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -43,17 +45,19 @@ public class AlertDispatcher {
     private final AlertMessageFormatter formatter;
     private final TelegramApiClient telegramApi;
     private final MeterRegistry meterRegistry;
+    private final ObservationRegistry observationRegistry;
 
     public AlertDispatcher(UserChannelRepository channelRepository,
                            ProcessedEventRepository processedEventRepository,
                            AlertMessageFormatter formatter,
                            TelegramApiClient telegramApi,
-                           MeterRegistry meterRegistry) {
+                           MeterRegistry meterRegistry, ObservationRegistry observationRegistry) {
         this.channelRepository = channelRepository;
         this.processedEventRepository = processedEventRepository;
         this.formatter = formatter;
         this.telegramApi = telegramApi;
         this.meterRegistry = meterRegistry;
+        this.observationRegistry = observationRegistry;
         // Регистрируем счётчики заранее, с нулём: иначе ряд появляется только после
         // первого события, на панелях до этого пусто, а Prometheus может не засчитать
         // самое первое увеличение (у rate/increase нет предыдущей точки).
@@ -99,7 +103,11 @@ public class AlertDispatcher {
         }
 
         try {
-            telegramApi.sendMessage(Long.parseLong(chatId.get()), formatter.format(event));
+            // Ручной span без URL: токен бота входит в адрес запроса к Telegram,
+            // и автоматический span записал бы его в Zipkin
+            Observation.createNotStarted("alert.send", observationRegistry)
+                    .lowCardinalityKeyValue("channel", CHANNEL_TAG)
+                    .observe(() -> telegramApi.sendMessage(Long.parseLong(chatId.get()), formatter.format(event)));
         } catch (TelegramApiException e) {
             if (e.isPermanent()) {
                 failed("permanent");

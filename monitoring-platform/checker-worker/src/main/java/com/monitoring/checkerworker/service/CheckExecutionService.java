@@ -1,11 +1,14 @@
 package com.monitoring.checkerworker.service;
 
 import com.monitoring.checkerworker.checks.CheckResult;
+import com.monitoring.checkerworker.checks.Checker;
 import com.monitoring.checkerworker.checks.CheckerRegistry;
 import com.monitoring.checkerworker.repository.DueMonitor;
 import com.monitoring.checkerworker.repository.MonitorJdbcRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +25,11 @@ import java.util.concurrent.Executors;
  * именно для I/O-bound нагрузки (сетевые проверки, которые почти всё время
  * проводят в ожидании ответа, не нагружая CPU): виртуальные потоки дёшевы
  * (килобайты, не мегабайты памяти на стек), и JVM сама мультиплексирует
- * их поверх небольшого числа platform-потоков во время реального ожидания
- * I/O. Для сравнения — пул из, скажем, 200 platform-потоков был бы и
- * избыточно тяжёл по памяти, и всё равно ограничивал бы параллелизм
- * искусственным числом, подобранным наугад.
+ * их поверх небольшого числа platform-потоков во время реального ожидания I/O.
+ *
+ * Трассировка: пул виртуальных потоков не передаёт контекст трассировки между
+ * потоками, поэтому span создаётся ВНУТРИ потока проверки. Каждая проверка —
+ * отдельный корневой span "monitor.check".
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +39,7 @@ public class CheckExecutionService {
     private final CheckerRegistry checkerRegistry;
     private final MonitorJdbcRepository repository;
     private final MeterRegistry meterRegistry;
+    private final ObservationRegistry observationRegistry;
 
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -50,34 +55,42 @@ public class CheckExecutionService {
             // DNS и любой другой пока не реализованный тип — явно
             // пропускаем с предупреждением, а не притворяемся, что
             // проверили. next_check_at уже сдвинут в claimDueMonitors,
-            // так что это не бесконечный busy-loop — повторная попытка
-            // будет через обычный интервал монитора.
+            // так что это не бесконечный busy-loop.
             log.warn("Нет реализации Checker для типа '{}' (monitor {}), пропускаю",
                 monitor.type(), monitor.id());
             return;
         }
 
+        // monitor.id — высококардинальный тег: попадает в span (по нему трассу
+        // можно найти в Zipkin), но НЕ в метрики, где такой тег раздул бы число рядов
+        Observation observation = Observation.createNotStarted("monitor.check", observationRegistry)
+            .lowCardinalityKeyValue("monitor.type", monitor.type())
+            .highCardinalityKeyValue("monitor.id", monitor.id().toString());
+
         try {
-            Timer.Sample sample = Timer.start(meterRegistry);
-            CheckResult result = checker.get().check(monitor.targetUrl());
-            sample.stop(Timer.builder("monitor.check.duration")
-                    .description("Длительность выполнения проверки монитора")
-                    .tag("type", monitor.type())
-                    .publishPercentileHistogram()
-                    .register(meterRegistry));
-            meterRegistry.counter("monitor.checks",
-                    "type", monitor.type(),
-                    "result", result.status().name().toLowerCase(Locale.ROOT)).increment();
-            repository.recordCheckOutcome(monitor, result);
+            observation.observe(() -> runCheck(monitor, checker.get()));
         } catch (Exception e) {
-            // Любое необработанное исключение здесь (например, сбой самой
-            // записи в БД — отдельно от сетевых ошибок, которые Checker
-            // уже перехватывает и оборачивает в CheckResult.down(...))
-            // логируется и ИЗОЛИРОВАННО для этого монитора: виртуальный
-            // поток одной проверки падает, не затрагивая остальные
-            // параллельно выполняющиеся проверки и не роняя весь воркер.
+            // Любое необработанное исключение (например, сбой записи в БД — отдельно
+            // от сетевых ошибок, которые Checker уже оборачивает в CheckResult.down)
+            // изолировано для этого монитора: виртуальный поток одной проверки
+            // падает, не затрагивая остальные проверки и не роняя весь воркер.
+            // Observation при этом уже пометила span как ошибочный.
             log.error("Необработанная ошибка при проверке монитора {}", monitor.id(), e);
         }
+    }
+
+    private void runCheck(DueMonitor monitor, Checker checker) {
+        Timer.Sample sample = Timer.start(meterRegistry);
+        CheckResult result = checker.check(monitor.targetUrl());
+        sample.stop(Timer.builder("monitor.check.duration")
+            .description("Длительность выполнения проверки монитора")
+            .tag("type", monitor.type())
+            .publishPercentileHistogram()
+            .register(meterRegistry));
+        meterRegistry.counter("monitor.checks",
+            "type", monitor.type(),
+            "result", result.status().name().toLowerCase(Locale.ROOT)).increment();
+        repository.recordCheckOutcome(monitor, result);
     }
 
     @PreDestroy
