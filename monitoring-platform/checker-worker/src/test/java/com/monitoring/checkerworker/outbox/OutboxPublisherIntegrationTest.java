@@ -1,8 +1,12 @@
 package com.monitoring.checkerworker.outbox;
 
 import com.monitoring.checkerworker.support.AbstractPostgresIntegrationTest;
+import com.monitoring.checkerworker.tracing.TraceContextCarrier;
 import com.monitoring.events.EventType;
 import com.monitoring.events.MonitorStatusEvent;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -47,7 +51,8 @@ class OutboxPublisherIntegrationTest extends AbstractPostgresIntegrationTest {
     @SuppressWarnings("unchecked")
     void setUpPublisher() {
         kafkaTemplate = mock(KafkaTemplate.class);
-        publisher = new OutboxPublisher(jdbc, new TransactionTemplate(transactionManager), kafkaTemplate);
+        publisher = new OutboxPublisher(jdbc, new TransactionTemplate(transactionManager), kafkaTemplate,
+                ObservationRegistry.NOOP, new TraceContextCarrier(Tracer.NOOP, Propagator.NOOP));
         // значения @Value в ручной сборке не подставляются
         ReflectionTestUtils.setField(publisher, "batchSize", 100);
         ReflectionTestUtils.setField(publisher, "sendTimeoutSeconds", 5L);

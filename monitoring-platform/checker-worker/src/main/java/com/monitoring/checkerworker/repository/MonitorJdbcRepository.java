@@ -103,15 +103,17 @@ public class MonitorJdbcRepository {
         return claimed;
     }
 
-    /**
-     * Записывает результат проверки: check_result (история), monitor
-     * (текущий статус и счётчик неудач) и, только если статус реально
-     * изменился, outbox_event. Всё одной транзакцией — это и есть
-     * transactional outbox: событие не потеряется и не будет опубликовано
-     * для откатившегося изменения.
-     */
     @Transactional
     public void recordCheckOutcome(DueMonitor monitor, CheckResult result) {
+        recordCheckOutcome(monitor, result, null);
+    }
+
+    /**
+     * traceContext — контекст трассировки проверки (JSON с заголовками распространения).
+     * Сохраняется вместе с событием, чтобы публикация в Kafka продолжила ту же трассу.
+     */
+    @Transactional
+    public void recordCheckOutcome(DueMonitor monitor, CheckResult result, String traceContext) {
         jdbcTemplate.update(
                 """
                 INSERT INTO check_result (monitor_id, checked_at, status, response_time_ms, status_code, error_message)
@@ -172,11 +174,11 @@ public class MonitorJdbcRepository {
         // А вот UNKNOWN -> DOWN уведомляет по-прежнему.
         boolean firstSuccess = "UNKNOWN".equals(monitor.currentStatus()) && "UP".equals(newStatus);
         if (statusChanged && !firstSuccess) {
-            insertOutboxEvent(monitor, newStatus, result.errorMessage());
+            insertOutboxEvent(monitor, newStatus, result.errorMessage(), traceContext);
         }
     }
 
-    private void insertOutboxEvent(DueMonitor monitor, String newStatus, String details) {
+    private void insertOutboxEvent(DueMonitor monitor, String newStatus, String details, String traceContext) {
         String eventType = newStatus.equals("UP") ? "MONITOR_UP" : "MONITOR_DOWN";
 
         Map<String, Object> payload = Map.of(
@@ -198,8 +200,8 @@ public class MonitorJdbcRepository {
             jsonPayload.setValue(objectMapper.writeValueAsString(payload));
 
             jdbcTemplate.update(
-                    "INSERT INTO outbox_event (aggregate_id, event_type, payload) VALUES (?, ?, ?)",
-                    monitor.id(), eventType, jsonPayload
+                    "INSERT INTO outbox_event (aggregate_id, event_type, payload, trace_context) VALUES (?, ?, ?, ?)",
+                    monitor.id(), eventType, jsonPayload, traceContext
             );
 
             log.info("Monitor {} changed status to {} — outbox event recorded", monitor.id(), newStatus);

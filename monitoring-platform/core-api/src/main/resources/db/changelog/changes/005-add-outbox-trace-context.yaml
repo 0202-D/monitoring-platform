@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-add-outbox-trace-context
+      author: platform
+      comment: >
+        Контекст трассировки проверки (заголовки распространения, например traceparent,
+        в виде JSON). checker-worker сохраняет его вместе с событием в той же транзакции,
+        а при публикации в Kafka продолжает ту же трассу: так outbox не разрывает
+        сквозную трассу "проверка -> событие -> доставка алерта". Колонка допускает NULL:
+        старые события и версии без трассировки продолжают работать.
+      changes:
+        - addColumn:
+            tableName: outbox_event
+            columns:
+              - column:
+                  name: trace_context
+                  type: TEXT

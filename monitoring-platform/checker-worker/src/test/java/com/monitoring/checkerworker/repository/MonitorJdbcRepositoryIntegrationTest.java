@@ -242,4 +242,14 @@ class MonitorJdbcRepositoryIntegrationTest extends AbstractPostgresIntegrationTe
         assertThat(statusOf(id)).isEqualTo("UP");
         assertThat(outboxEvents()).isEmpty();
     }
+    @Test
+    void storesTraceContextWithOutboxEvent() {
+        UUID id = insertMonitor("UP", 2, AFTER_CLAIM, true);
+        String traceContext = "{\"traceparent\":\"00-6afc4968c8c694faf4abf313b22ce18b-f4abf313b22ce18b-01\"}";
+
+        repository.recordCheckOutcome(dueMonitor(id, "UP", 2), CheckResult.down("boom"), traceContext);
+
+        assertThat(jdbc.queryForObject("SELECT trace_context FROM outbox_event", String.class))
+                .isEqualTo(traceContext);
+    }
 }

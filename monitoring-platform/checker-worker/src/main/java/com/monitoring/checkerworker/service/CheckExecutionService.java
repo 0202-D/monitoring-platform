@@ -5,6 +5,7 @@ import com.monitoring.checkerworker.checks.Checker;
 import com.monitoring.checkerworker.checks.CheckerRegistry;
 import com.monitoring.checkerworker.repository.DueMonitor;
 import com.monitoring.checkerworker.repository.MonitorJdbcRepository;
+import com.monitoring.checkerworker.tracing.TraceContextCarrier;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.observation.Observation;
@@ -40,6 +41,7 @@ public class CheckExecutionService {
     private final MonitorJdbcRepository repository;
     private final MeterRegistry meterRegistry;
     private final ObservationRegistry observationRegistry;
+    private final TraceContextCarrier traceContextCarrier;
 
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
 
@@ -90,7 +92,9 @@ public class CheckExecutionService {
         meterRegistry.counter("monitor.checks",
             "type", monitor.type(),
             "result", result.status().name().toLowerCase(Locale.ROOT)).increment();
-        repository.recordCheckOutcome(monitor, result);
+        // Мы внутри наблюдения "monitor.check": сохраняем его контекст вместе с
+        // событием, чтобы публикация в Kafka продолжила эту же трассу
+        repository.recordCheckOutcome(monitor, result, traceContextCarrier.captureCurrent());
     }
 
     @PreDestroy
