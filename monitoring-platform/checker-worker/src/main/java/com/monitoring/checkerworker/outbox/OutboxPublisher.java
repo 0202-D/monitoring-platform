@@ -26,19 +26,16 @@ import java.util.concurrent.TimeUnit;
  * Вторая половина transactional outbox: MonitorJdbcRepository пишет событие
  * в outbox_event в одной транзакции со сменой статуса, а этот класс
  * асинхронно доставляет его в Kafka.
- *
  * Гарантия доставки — AT-LEAST-ONCE, не exactly-once. Сценарий дубля:
  * send() в Kafka подтверждён, но процесс упал (или коммит в БД не прошёл)
  * ДО проставления published_at — при следующем опросе событие уйдёт
  * повторно. Поэтому консьюмеры обязаны быть идемпотентными; ключ
  * идемпотентности — поле eventId внутри события.
- *
  * Трассировка: публикация продолжает трассу проверки, контекст которой
  * сохранён в строке outbox_event (см. TraceContextCarrier). Для этого вся
  * публикация одного события выполняется внутри наблюдения "outbox.publish",
  * созданного как "получатель" с сохранённым контекстом, а отправка в Kafka
  * автоматически становится его дочерним span'ом.
- *
  * TransactionTemplate, а не @Transactional: так граница транзакции видна
  * прямо в коде и не зависит от прокси (вызов @Transactional-метода из
  * соседнего метода того же класса проходит мимо прокси).
@@ -122,7 +119,7 @@ public class OutboxPublisher {
         // Получатель с контекстом из БД: если контекст сохранён, span продолжит
         // трассу проверки, иначе начнётся новая (для событий, записанных без трассировки)
         ReceiverContext<Map<String, String>> context =
-            new ReceiverContext<>((carrier, key) -> carrier.get(key));
+            new ReceiverContext<>(Map::get);
         context.setCarrier(traceContextCarrier.parse(row.traceContext()));
 
         Observation observation = Observation.createNotStarted("outbox.publish", () -> context, observationRegistry)

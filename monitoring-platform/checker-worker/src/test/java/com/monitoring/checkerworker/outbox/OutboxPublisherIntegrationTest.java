@@ -97,7 +97,7 @@ class OutboxPublisherIntegrationTest extends AbstractPostgresIntegrationTest {
         verify(kafkaTemplate, times(2)).send(eq(TOPIC), anyString(), captor.capture());
         List<MonitorStatusEvent> sent = captor.getAllValues();
 
-        MonitorStatusEvent down = sent.get(0);
+        MonitorStatusEvent down = sent.getFirst();
         assertThat(down.getEventType()).isEqualTo(EventType.MONITOR_DOWN);
         assertThat(down.getMonitorId()).isEqualTo(monitorId.toString());
         assertThat(down.getUserId()).isEqualTo(SUBJECT);
