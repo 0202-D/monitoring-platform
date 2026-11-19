@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-extend-user-channel
+      author: platform
+      comment: >
+        Модель канала уведомлений разделяет ВЫБОР ПОЛЬЗОВАТЕЛЯ и СОСТОЯНИЕ СИСТЕМЫ.
+        enabled — переключатель пользователя ("получать / не получать").
+        status — состояние канала с точки зрения системы: ACTIVE (доставка возможна)
+        или BROKEN (система выяснила, что доставка невозможна: бот заблокирован,
+        адрес не принимает почту); status_reason — причина для показа в интерфейсе.
+        verified_at — когда адресат подтверждён (для Telegram — момент привязки по ссылке).
+        Колонка is_active больше не используется кодом и будет удалена отдельной
+        миграцией после проверки.
+      changes:
+        - addColumn:
+            tableName: user_channel
+            columns:
+              - column:
+                  name: enabled
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: VARCHAR(20)
+                  defaultValue: ACTIVE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_reason
+                  type: VARCHAR(255)
+              - column:
+                  name: verified_at
+                  type: TIMESTAMPTZ
+        - sql:
+            comment: Перенос прежнего is_active в новую модель
+            sql: >
+              UPDATE user_channel SET
+                status = CASE WHEN is_active THEN 'ACTIVE' ELSE 'BROKEN' END,
+                status_reason = CASE WHEN is_active THEN NULL
+                  ELSE 'Канал отключён системой: бот заблокирован или чат недоступен' END,
+                verified_at = created_at
+        - sql:
+            sql: >
+              ALTER TABLE user_channel
+              ADD CONSTRAINT chk_user_channel_status CHECK (status IN ('ACTIVE', 'BROKEN'))

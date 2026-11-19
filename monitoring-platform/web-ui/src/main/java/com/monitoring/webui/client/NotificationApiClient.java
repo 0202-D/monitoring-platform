@@ -11,6 +11,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /** Клиент notification-service: каналы уведомлений пользователя. */
 @Component
@@ -78,6 +80,24 @@ public class NotificationApiClient {
     public static class NotificationApiException extends RuntimeException {
         public NotificationApiException(String message, Throwable cause) {
             super(message, cause);
+        }
+    }
+    
+    public void setChannelEnabled(String channelType, boolean enabled) {
+        try {
+            restClient.put()
+                    .uri("/api/notification-channels/{type}", channelType.toLowerCase(Locale.ROOT))
+                    .headers(h -> h.setBearerAuth(accessTokenProvider.currentAccessToken()))
+                    .body(Map.of("enabled", enabled))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatusCode.valueOf(404)) {
+                throw new NotificationApiException("Канал не подключён", e);
+            }
+            throw new NotificationApiException("Не удалось изменить настройку: " + e.getStatusCode(), e);
+        } catch (RestClientException e) {
+            throw new NotificationApiException("Не удалось изменить настройку: " + e.getMessage(), e);
         }
     }
 }
