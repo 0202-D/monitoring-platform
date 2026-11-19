@@ -2,11 +2,13 @@ package com.monitoring.webui.views;
 
 import com.monitoring.webui.client.NotificationApiClient;
 import com.monitoring.webui.client.NotificationApiClient.NotificationApiException;
+import com.monitoring.webui.client.dto.ChannelDto;
 import com.monitoring.webui.client.dto.TelegramLinkDto;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.H2;
@@ -37,19 +39,31 @@ public class SettingsView extends VerticalLayout {
     // относится ко всему UI, держать его включённым постоянно незачем.
     private static final int LINK_POLL_INTERVAL_MS = 3_000;
 
-    private enum TelegramState { NOT_CONNECTED, CONNECTED, DISABLED }
+    /**
+     * Состояние карточки Telegram. Три независимых факта (привязан ли канал,
+     * выбор пользователя, состояние системы) сводятся к четырём случаям.
+     */
+    private enum TelegramState {
+        NOT_CONNECTED,  // канал не привязан
+        ENABLED,        // привязан, включён, исправен
+        PAUSED,         // привязан, пользователь выключил переключатель
+        BROKEN          // система выяснила, что доставка невозможна
+    }
 
     private final NotificationApiClient notificationApi;
 
     private final Span statusBadge = new Span();
     private final Paragraph statusText = new Paragraph();
+    private final Checkbox notifyToggle = new Checkbox("Получать уведомления в Telegram");
     private final Button connectButton = new Button("Подключить Telegram");
-    private final Button disconnectButton = new Button("Отключить");
+    private final Button disconnectButton = new Button("Отвязать");
     private final VerticalLayout linkPanel = new VerticalLayout();
 
     private Registration pollRegistration;
     // не null, пока мы ждём привязки по выданной ссылке
     private Instant waitingUntil;
+    // причина, по которой система пометила канал сломанным (для показа пользователю)
+    private String brokenReason;
 
     public SettingsView(NotificationApiClient notificationApi) {
         this.notificationApi = notificationApi;
@@ -67,6 +81,14 @@ public class SettingsView extends VerticalLayout {
         HorizontalLayout titleRow = new HorizontalLayout(new H3("Telegram"), statusBadge);
         titleRow.setAlignItems(Alignment.CENTER);
 
+        // isFromClient: реагируем только на действие пользователя, а не на программную
+        // установку значения (иначе откат значения при ошибке вызвал бы повторный запрос)
+        notifyToggle.addValueChangeListener(event -> {
+            if (event.isFromClient()) {
+                onToggle(event.getValue());
+            }
+        });
+
         connectButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         connectButton.addClickListener(e -> requestLink());
 
@@ -77,7 +99,8 @@ public class SettingsView extends VerticalLayout {
         linkPanel.setVisible(false);
 
         VerticalLayout card = new VerticalLayout(
-            titleRow, statusText, new HorizontalLayout(connectButton, disconnectButton), linkPanel);
+            titleRow, statusText, notifyToggle,
+            new HorizontalLayout(connectButton, disconnectButton), linkPanel);
         card.setPadding(false);
         return card;
     }
@@ -101,6 +124,18 @@ public class SettingsView extends VerticalLayout {
             detachEvent.getUI().setPollInterval(-1);
         }
         super.onDetach(detachEvent);
+    }
+
+    private void onToggle(boolean enabled) {
+        try {
+            notificationApi.setChannelEnabled(TELEGRAM, enabled);
+            refreshStatus();
+            showSuccess(enabled ? "Уведомления в Telegram включены" : "Уведомления в Telegram выключены");
+        } catch (NotificationApiException e) {
+            // Откатываем переключатель: на сервере значение не изменилось
+            notifyToggle.setValue(!enabled);
+            showError(e.getMessage());
+        }
     }
 
     private void requestLink() {
@@ -149,7 +184,9 @@ public class SettingsView extends VerticalLayout {
         try {
             TelegramState state = loadState();
             render(state);
-            if (state == TelegramState.CONNECTED) {
+            // Повторная привязка включает канал и снимает пометку "сломан",
+            // поэтому успехом считаем состояние ENABLED
+            if (state == TelegramState.ENABLED) {
                 stopWaiting();
                 showSuccess("Telegram подключён");
                 return;
@@ -165,16 +202,16 @@ public class SettingsView extends VerticalLayout {
 
     private void confirmDisconnect() {
         ConfirmDialog confirm = new ConfirmDialog();
-        confirm.setHeader("Отключить Telegram?");
+        confirm.setHeader("Отвязать Telegram?");
         confirm.setText("Уведомления перестанут приходить в Telegram. Подключить его можно снова в любой момент.");
         confirm.setCancelable(true);
-        confirm.setConfirmText("Отключить");
+        confirm.setConfirmText("Отвязать");
         confirm.setConfirmButtonTheme("error primary");
         confirm.addConfirmListener(e -> {
             try {
                 notificationApi.unlinkTelegram();
                 refreshStatus();
-                showSuccess("Telegram отключён");
+                showSuccess("Telegram отвязан");
             } catch (NotificationApiException ex) {
                 showError(ex.getMessage());
             }
@@ -183,11 +220,22 @@ public class SettingsView extends VerticalLayout {
     }
 
     private TelegramState loadState() {
+        brokenReason = null;
         return notificationApi.listChannels().stream()
             .filter(channel -> TELEGRAM.equals(channel.channelType()))
             .findFirst()
-            .map(channel -> channel.active() ? TelegramState.CONNECTED : TelegramState.DISABLED)
+            .map(this::toState)
             .orElse(TelegramState.NOT_CONNECTED);
+    }
+
+    private TelegramState toState(ChannelDto channel) {
+        // Состояние системы важнее выбора пользователя: сломанный канал
+        // не работает, как бы ни стоял переключатель
+        if ("BROKEN".equals(channel.status())) {
+            brokenReason = channel.statusReason();
+            return TelegramState.BROKEN;
+        }
+        return channel.enabled() ? TelegramState.ENABLED : TelegramState.PAUSED;
     }
 
     private void refreshStatus() {
@@ -196,6 +244,7 @@ public class SettingsView extends VerticalLayout {
         } catch (NotificationApiException e) {
             setBadge("Нет данных", "contrast");
             statusText.setText("Не удалось загрузить состояние Telegram. Попробуйте обновить страницу.");
+            notifyToggle.setVisible(false);
             connectButton.setVisible(false);
             disconnectButton.setVisible(false);
         }
@@ -203,16 +252,28 @@ public class SettingsView extends VerticalLayout {
 
     private void render(TelegramState state) {
         switch (state) {
-            case CONNECTED -> {
-                setBadge("Подключён", "success");
+            case ENABLED -> {
+                setBadge("Включено", "success");
                 statusText.setText("Уведомления о смене статуса мониторов приходят в ваш Telegram.");
+                showToggle(true);
                 connectButton.setVisible(false);
                 disconnectButton.setVisible(true);
             }
-            case DISABLED -> {
-                setBadge("Отключён", "error");
-                statusText.setText("Telegram не смог доставить сообщение (бот заблокирован или чат "
-                    + "недоступен). Подключите его заново.");
+            case PAUSED -> {
+                setBadge("Выключено", "contrast");
+                statusText.setText("Вы выключили уведомления в Telegram. Включите переключатель, "
+                    + "чтобы снова их получать.");
+                showToggle(false);
+                connectButton.setVisible(false);
+                disconnectButton.setVisible(true);
+            }
+            case BROKEN -> {
+                setBadge("Требует внимания", "error");
+                statusText.setText(brokenReason != null
+                    ? brokenReason + ". Подключите Telegram заново."
+                    : "Доставка в Telegram невозможна. Подключите его заново.");
+                notifyToggle.setVisible(false);
+                connectButton.setText("Подключить заново");
                 connectButton.setVisible(true);
                 disconnectButton.setVisible(true);
             }
@@ -220,10 +281,18 @@ public class SettingsView extends VerticalLayout {
                 setBadge("Не подключён", "contrast");
                 statusText.setText("Подключите Telegram, чтобы получать уведомления о падении "
                     + "и восстановлении мониторов.");
+                notifyToggle.setVisible(false);
+                connectButton.setText("Подключить Telegram");
                 connectButton.setVisible(true);
                 disconnectButton.setVisible(false);
             }
         }
+    }
+
+    private void showToggle(boolean value) {
+        notifyToggle.setVisible(true);
+        // программная установка: слушатель её игнорирует (isFromClient = false)
+        notifyToggle.setValue(value);
     }
 
     private void setBadge(String text, String variant) {
