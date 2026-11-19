@@ -10,7 +10,6 @@ import java.util.Locale;
 /**
  * Счётчики доставки с тегом канала. Регистрируются заранее, с нулём: иначе ряд появляется
  * только после первого события, и Prometheus может не засчитать самое первое увеличение.
- *
  *   alerts.planned{channel}       — строка поставлена в очередь
  *   alerts.delivered{channel}     — доставлено
  *   alerts.failed{channel,kind}   — неудачная ПОПЫТКА (transient — будет повтор, permanent — канал сломан)
