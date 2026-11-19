@@ -1,0 +1,49 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-notification-delivery
+      author: platform
+      comment: >
+        Очередь доставки уведомлений. По строке на пару (событие, канал): консьюмер Kafka
+        только записывает строки, а отдельный воркер отправляет их с повторами.
+        status: PENDING (ждёт отправки), SENT, FAILED (повторы исчерпаны или доставка
+        невозможна), CANCELLED (канал выключен или сломан к моменту отправки).
+        seq даёт строгий порядок: для одной пары (монитор, канал) воркер не берёт
+        новую строку, пока есть более старая неотправленная. UNIQUE (event_id, channel_type)
+        обеспечивает идемпотентность: повторная доставка события из Kafka не создаёт дубль.
+        next_attempt_at служит и расписанием повторов, и "арендой" строки на время отправки:
+        если воркер упал, строка снова становится доступной после истечения аренды.
+      changes:
+        - sql:
+            sql: >
+              CREATE TABLE notification_delivery (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                seq BIGINT GENERATED ALWAYS AS IDENTITY,
+                event_id VARCHAR(64) NOT NULL,
+                channel_type VARCHAR(20) NOT NULL,
+                user_id UUID NOT NULL,
+                monitor_id VARCHAR(64) NOT NULL,
+                event_type VARCHAR(30) NOT NULL,
+                target_url TEXT NOT NULL,
+                details TEXT,
+                occurred_at TIMESTAMPTZ NOT NULL,
+                status VARCHAR(12) NOT NULL DEFAULT 'PENDING',
+                attempts INT NOT NULL DEFAULT 0,
+                next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                last_error VARCHAR(500),
+                trace_context TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                finished_at TIMESTAMPTZ,
+                CONSTRAINT uq_delivery_event_channel UNIQUE (event_id, channel_type),
+                CONSTRAINT chk_delivery_status CHECK (status IN ('PENDING', 'SENT', 'FAILED', 'CANCELLED'))
+              )
+        - sql:
+            comment: Выборка готовых к отправке строк
+            sql: >
+              CREATE INDEX idx_delivery_due ON notification_delivery (next_attempt_at)
+              WHERE status = 'PENDING'
+        - sql:
+            comment: Проверка "есть ли более старая неотправленная строка этого монитора"
+            sql: >
+              CREATE INDEX idx_delivery_monitor_pending
+              ON notification_delivery (monitor_id, channel_type, seq)
+              WHERE status = 'PENDING'

@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-telegram-link-token.yaml
   - include:
       file: db/changelog/changes/004-extend-user-channel.yaml
+  - include:
+      file: db/changelog/changes/005-create-notification-delivery.yaml

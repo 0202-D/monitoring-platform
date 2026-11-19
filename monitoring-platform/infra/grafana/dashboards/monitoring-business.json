@@ -6,7 +6,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "15s",
   "time": {
     "from": "now-1h",
@@ -170,7 +170,7 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "Потеряно алертов за 1 час",
+      "title": "Недоставлено алертов за 1 час",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -211,7 +211,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(alerts_dropped_total[1h])) or vector(0)",
+          "expr": "(sum(increase(alerts_undelivered_total[1h])) or vector(0)) + (sum(increase(alerts_dropped_total[1h])) or vector(0))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -626,8 +626,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(alerts_dropped_total[5m]))",
-          "legendFormat": "ПОТЕРЯНО",
+          "expr": "(sum(increase(alerts_undelivered_total[5m])) or vector(0)) + (sum(increase(alerts_dropped_total[5m])) or vector(0))",
+          "legendFormat": "НЕ ДОСТАВЛЕНО",
           "refId": "D"
         }
       ]
@@ -814,6 +814,88 @@
           },
           "expr": "sum(increase(telegram_poll_failures_total[5m]))",
           "legendFormat": "сбоев опроса",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Очередь доставки: ожидают отправки",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(notification_queue_pending)",
+          "legendFormat": "в очереди",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Очередь доставки: возраст самого старого",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(notification_queue_oldest_pending_age_seconds)",
+          "legendFormat": "возраст",
           "refId": "A"
         }
       ]
