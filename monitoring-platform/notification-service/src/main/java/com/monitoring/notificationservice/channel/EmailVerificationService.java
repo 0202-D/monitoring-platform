@@ -25,7 +25,6 @@ import java.util.regex.Pattern;
 
 /**
  * Подтверждение адреса электронной почты одноразовой ссылкой.
- *
  * Принимать любой введённый адрес без подтверждения нельзя: наш сервис можно было бы
  * использовать, чтобы слать письма постороннему человеку. Поэтому канал создаётся в
  * статусе PENDING_VERIFICATION, доставка в него не идёт, а в адрес отправляется ссылка
@@ -112,7 +111,7 @@ public class EmailVerificationService {
             }
             // Если адрес успели сменить или отвязать, канал уже не ждёт подтверждения;
             // откат вернёт токен на место, но ссылка всё равно считается недействительной
-            String address = channelRepository.activatePending(users.get(0), "EMAIL")
+            String address = channelRepository.activatePending(users.getFirst(), "EMAIL")
                 .orElseThrow(EmailVerificationService::invalidLink);
             return UserChannelRepository.maskEmail(address);
         });

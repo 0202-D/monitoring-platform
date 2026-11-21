@@ -99,7 +99,7 @@ class EmailVerificationIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
-    void expiredTokenIsRejectedAndChannelStaysPending() throws Exception {
+    void expiredTokenIsRejectedAndChannelStaysPending() {
         service.requestVerification(USER_ID, "alice@example.com");
         jdbc.update("UPDATE email_verification_token SET expires_at = now() - interval '1 second'");
 
@@ -228,7 +228,7 @@ class EmailVerificationIntegrationTest extends AbstractPostgresIntegrationTest {
         }
 
         String lastBody() throws Exception {
-            return (String) sent.get(sent.size() - 1).getContent();
+            return (String) sent.getLast().getContent();
         }
     }
 }
