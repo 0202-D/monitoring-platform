@@ -117,7 +117,12 @@ services:
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: monitoring-mailpit
+    ports:
+      - "1025:1025"   # SMTP: сюда приложение отправляет письма
+      - "8025:8025"   # веб-интерфейс: здесь вы читаете письма
 volumes:
   postgres-data:
 

@@ -1,0 +1,50 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-add-email-channel
+      author: platform
+      comment: >
+        Email как второй канал уведомлений. Новый статус канала PENDING_VERIFICATION:
+        адрес указан, но ещё не подтверждён, доставка в такой канал не идёт. Адрес
+        подтверждается одноразовой ссылкой из письма: в базе хранится только SHA-256
+        токена (как у Telegram), а не сам токен. Токен привязан к пользователю, у
+        пользователя одновременно не больше одного токена: новый запрос заменяет старый.
+      changes:
+        - sql:
+            comment: Новый допустимый статус канала
+            sql: ALTER TABLE user_channel DROP CONSTRAINT chk_user_channel_status
+        - sql:
+            sql: >
+              ALTER TABLE user_channel ADD CONSTRAINT chk_user_channel_status
+              CHECK (status IN ('ACTIVE', 'BROKEN', 'PENDING_VERIFICATION'))
+        - createTable:
+            tableName: email_verification_token
+            columns:
+              - column:
+                  name: token_hash
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: TIMESTAMPTZ
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMPTZ
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false
+        - createIndex:
+            indexName: uq_email_verification_user
+            tableName: email_verification_token
+            unique: true
+            columns:
+              - column:
+                  name: user_id

@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-extend-user-channel.yaml
   - include:
       file: db/changelog/changes/005-create-notification-delivery.yaml
+  - include:
+      file: db/changelog/changes/006-add-email-channel.yaml

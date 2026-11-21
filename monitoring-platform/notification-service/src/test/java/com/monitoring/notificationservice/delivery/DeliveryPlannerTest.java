@@ -122,6 +122,17 @@ class DeliveryPlannerTest {
         assertThat(count("alerts.skipped", "reason", "invalid_user_id")).isEqualTo(1.0);
     }
 
+    @Test
+    void skipsChannelThatIsNotVerifiedYet() {
+        when(channelRepository.findByUserId(USER_ID))
+                .thenReturn(List.of(channel(true, "PENDING_VERIFICATION")));
+
+        planner.plan(event(USER_ID.toString()));
+
+        verify(deliveryRepository, never()).insertIfAbsent(any());
+        assertThat(count("alerts.skipped", "reason", "channel_unverified")).isEqualTo(1.0);
+    }
+
     private double count(String name, String tagKey, String tagValue) {
         return registry.counter(name, tagKey, tagValue).count();
     }

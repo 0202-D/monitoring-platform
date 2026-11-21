@@ -20,7 +20,7 @@ import java.util.Locale;
 public class DeliveryMetrics {
 
     private static final List<String> SKIP_REASONS = List.of(
-        "no_channel", "channel_disabled", "channel_broken", "duplicate", "invalid_user_id", "cancelled");
+        "no_channel", "channel_disabled", "channel_broken", "duplicate", "invalid_user_id", "cancelled", "channel_unverified");
 
     private final MeterRegistry registry;
 
