@@ -35,6 +35,6 @@ public abstract class AbstractPostgresIntegrationTest {
 
     @BeforeEach
     protected void cleanTables() {
-        jdbc.execute("TRUNCATE notification_delivery, user_channel, telegram_link_token, processed_event CASCADE");
+        jdbc.execute("TRUNCATE notification_delivery, user_channel, telegram_link_token, email_verification_token, processed_event CASCADE");
     }
 }

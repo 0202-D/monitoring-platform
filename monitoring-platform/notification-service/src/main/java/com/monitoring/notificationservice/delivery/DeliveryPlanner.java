@@ -75,6 +75,10 @@ public class DeliveryPlanner {
                 metrics.skipped("channel_broken");
                 continue;
             }
+            if (!UserChannelRepository.STATUS_ACTIVE.equals(info.status())) {
+                metrics.skipped("channel_unverified");
+                continue;
+            }
             if (!info.enabled()) {
                 metrics.skipped("channel_disabled");
                 continue;

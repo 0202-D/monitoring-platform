@@ -23,16 +23,18 @@ import java.util.UUID;
 @RequestMapping("/api/notification-channels")
 public class NotificationChannelController {
 
-    // Поддерживаемые типы каналов; EMAIL добавится вместе с самим каналом
-    private static final Set<String> SUPPORTED_CHANNELS = Set.of("TELEGRAM");
+    private static final Set<String> SUPPORTED_CHANNELS = Set.of("TELEGRAM", "EMAIL");
 
     private final TelegramLinkService telegramLinkService;
     private final UserChannelRepository channelRepository;
+    private final EmailVerificationService emailVerificationService;
 
     public NotificationChannelController(TelegramLinkService telegramLinkService,
-                                         UserChannelRepository channelRepository) {
+                                         UserChannelRepository channelRepository,
+                                         EmailVerificationService emailVerificationService) {
         this.telegramLinkService = telegramLinkService;
         this.channelRepository = channelRepository;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @GetMapping
@@ -65,11 +67,18 @@ public class NotificationChannelController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Канал не подключён"));
     }
 
-    @DeleteMapping("/telegram")
+    /** Отвязка канала. Для email заодно сбрасывается ожидающее подтверждение. */
+    @DeleteMapping("/{channelType}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void unlinkTelegram(@AuthenticationPrincipal Jwt jwt) {
-        if (!channelRepository.delete(userId(jwt), "TELEGRAM")) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Telegram не подключён");
+    public void unlink(@AuthenticationPrincipal Jwt jwt, @PathVariable("channelType") String channelType) {
+        String type = normalize(channelType);
+        UUID userId = userId(jwt);
+
+        if (!channelRepository.delete(userId, type)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Канал не подключён");
+        }
+        if ("EMAIL".equals(type)) {
+            emailVerificationService.discardPending(userId);
         }
     }
 

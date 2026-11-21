@@ -36,9 +36,23 @@ spring:
         specific.avro.reader: true
     listener:
       observation-enabled: true
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
 
 notification:
   topic: monitor-status-events
+  mail:
+    from: ${MAIL_FROM:no-reply@monitoring.local}
+    web-base-url: ${WEB_UI_BASE_URL:http://localhost:8083}
 telegram:
   bot-username: petrov_monitoring_bot
   bot-token: ${TELEGRAM_BOT_TOKEN:}
