@@ -10,7 +10,6 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
@@ -23,7 +22,6 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
  * Страница, на которую ведёт ссылка из письма подтверждения. Доступна без входа: человек
  * может открыть письмо в другом браузере или на другом устройстве, а учётными данными
  * служит сам одноразовый токен в ссылке.
- *
  * Адрес подтверждается НЕ при открытии страницы, а по нажатию кнопки. Почтовые сервисы
  * и антивирусы часто сами открывают ссылки из писем для проверки: если бы подтверждение
  * срабатывало при открытии, токен сгорал бы раньше, чем человек увидит письмо.

@@ -37,7 +37,8 @@ public class NotificationApiClient {
                 .uri("/api/notification-channels")
                 .headers(h -> h.setBearerAuth(accessTokenProvider.currentAccessToken()))
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<ChannelDto>>() {});
+                .body(new ParameterizedTypeReference<>() {
+                });
             return channels == null ? List.of() : channels;
         } catch (RestClientException e) {
             throw new NotificationApiException("Не удалось загрузить каналы уведомлений: " + e.getMessage(), e);

@@ -7,7 +7,6 @@ import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
@@ -15,7 +14,6 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
  * Общий каркас карточки канала уведомлений: заголовок, бейдж состояния, пояснение,
  * переключатель "получать / не получать" и ряд кнопок. Конкретный канал (Telegram, email)
  * только решает, что показывать в каждом состоянии и какие кнопки нужны.
- *
  * Три независимых факта о канале: привязан ли он, выбор пользователя (переключатель)
  * и состояние системы (исправен или сломан). Карточка получает их одним объектом
  * ChannelDto (или null, если канал не привязан).
