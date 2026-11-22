@@ -1,6 +1,8 @@
 package com.monitoring.webui.client;
 
 import com.monitoring.webui.client.dto.ChannelDto;
+import com.monitoring.webui.client.dto.EmailConfirmedDto;
+import com.monitoring.webui.client.dto.EmailVerificationDto;
 import com.monitoring.webui.client.dto.TelegramLinkDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -98,6 +100,86 @@ public class NotificationApiClient {
             throw new NotificationApiException("Не удалось изменить настройку: " + e.getStatusCode(), e);
         } catch (RestClientException e) {
             throw new NotificationApiException("Не удалось изменить настройку: " + e.getMessage(), e);
+        }
+    }
+
+    public EmailVerificationDto requestEmailVerification(String address) {
+        try {
+            EmailVerificationDto result = restClient.post()
+                    .uri("/api/notification-channels/email")
+                    .headers(h -> h.setBearerAuth(accessTokenProvider.currentAccessToken()))
+                    .body(Map.of("address", address))
+                    .retrieve()
+                    .body(EmailVerificationDto.class);
+            if (result == null) {
+                throw new NotificationApiException("Сервис уведомлений вернул пустой ответ", null);
+            }
+            return result;
+        } catch (RestClientResponseException e) {
+            // Текст ошибки сервер не отдаёт (так настроен Spring Boot), поэтому смотрим на код
+            int status = e.getStatusCode().value();
+            if (status == 400) {
+                throw new NotificationApiException("Некорректный адрес электронной почты", e);
+            }
+            if (status == 429) {
+                throw new NotificationApiException("Письмо уже отправлено. Повторить можно через минуту", e);
+            }
+            if (status == 502) {
+                throw new NotificationApiException("Не удалось отправить письмо. Попробуйте позже", e);
+            }
+            throw new NotificationApiException("Не удалось указать адрес: " + e.getStatusCode(), e);
+        } catch (RestClientException e) {
+            throw new NotificationApiException("Сервис уведомлений недоступен: " + e.getMessage(), e);
+        }
+    }
+
+    /** Отвязка канала любого типа (telegram, email). Уже отвязанный канал не считается ошибкой. */
+    public void unlinkChannel(String channelType) {
+        try {
+            restClient.delete()
+                    .uri("/api/notification-channels/{type}", channelType.toLowerCase(Locale.ROOT))
+                    .headers(h -> h.setBearerAuth(accessTokenProvider.currentAccessToken()))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatusCode.valueOf(404)) {
+                return;
+            }
+            throw new NotificationApiException("Не удалось отвязать канал: " + e.getStatusCode(), e);
+        } catch (RestClientException e) {
+            throw new NotificationApiException("Не удалось отвязать канал: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Подтверждение адреса по ссылке из письма. Эндпоинт публичный, поэтому токен пользователя
+     * НЕ прикладывается: страница открывается без входа, учётными данными служит сам токен ссылки.
+     */
+    public EmailConfirmedDto confirmEmail(String token) {
+        try {
+            EmailConfirmedDto result = restClient.post()
+                    .uri("/api/email-verification/confirm")
+                    .body(Map.of("token", token))
+                    .retrieve()
+                    .body(EmailConfirmedDto.class);
+            if (result == null) {
+                throw new NotificationApiException("Сервис уведомлений вернул пустой ответ", null);
+            }
+            return result;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatusCode.valueOf(404)) {
+                throw new EmailLinkInvalidException(e);
+            }
+            throw new NotificationApiException("Не удалось подтвердить адрес: " + e.getStatusCode(), e);
+        } catch (RestClientException e) {
+            throw new NotificationApiException("Сервис уведомлений недоступен", e);
+        }
+    }
+
+    /** Ссылка подтверждения недействительна: устарела, уже использована или не существует. */
+    public static class EmailLinkInvalidException extends NotificationApiException {
+        public EmailLinkInvalidException(Throwable cause) {
+            super("Ссылка недействительна или устарела", cause);
         }
     }
 }
