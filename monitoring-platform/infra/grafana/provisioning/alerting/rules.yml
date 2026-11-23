@@ -1,0 +1,409 @@
+apiVersion: 1
+
+# Правила оповещения. Файл генерируется из таблицы правил: условие каждого правила — 
+# запрос A к Prometheus (мгновенное значение) и математическое выражение B над ним.
+# Правило срабатывает, когда выражение B истинно дольше, чем указано в for.
+# Правила из файлов нельзя редактировать в интерфейсе Grafana: меняйте файл и перезапускайте Grafana.
+groups:
+  - orgId: 1
+    name: availability
+    folder: Monitoring Platform
+    interval: 1m
+    rules:
+      - uid: svc-down
+        title: "Сервис недоступен"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'up'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A < 1'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: "Сервис {{ $labels.application }} недоступен"
+          description: "Prometheus не может получить метрики сервиса уже минуту. Проверьте, запущен ли процесс."
+        labels:
+          severity: critical
+        isPaused: false
+      - uid: checks-not-running
+        title: "Проверки мониторов не выполняются"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: '(sum(increase(monitor_checks_total[20m])) or vector(0)) == 0 and on() (sum(monitors_count) > 0)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A < 1'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "За 20 минут не выполнено ни одной проверки при наличии активных мониторов"
+          description: "Сервис checker-worker может быть жив, но планировщик не работает. Предполагается, что интервал мониторов меньше 20 минут."
+        labels:
+          severity: critical
+        isPaused: false
+      - uid: checks-mostly-failing
+        title: "Большинство проверок неуспешны"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'sum(rate(monitor_checks_total{result="down"}[5m])) / sum(rate(monitor_checks_total[5m])) and on() (sum(increase(monitor_checks_total[5m])) >= 6)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 0.5'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Больше половины проверок за 5 минут неуспешны"
+          description: "Возможно, проблема у самого воркера (сеть, DNS), а не у сайтов пользователей: проверьте соединение checker-worker."
+        labels:
+          severity: warning
+        isPaused: false
+  - orgId: 1
+    name: delivery
+    folder: Monitoring Platform
+    interval: 1m
+    rules:
+      - uid: alerts-undelivered
+        title: "Уведомления не доставлены"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: '(sum(increase(alerts_undelivered_total[10m])) or vector(0)) + (sum(increase(alerts_dropped_total[10m])) or vector(0))'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 0'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "Есть недоставленные пользователям уведомления"
+          description: "Повторы доставки исчерпаны либо событие потеряно консьюмером. Смотрите дашборд Monitoring business и логи notification-service."
+        labels:
+          severity: critical
+        isPaused: false
+      - uid: telegram-silent
+        title: "Нет связи с Telegram"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(telegram_poll_last_success_age_seconds)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 180'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 1m
+        annotations:
+          summary: "Telegram не отвечает дольше 3 минут"
+          description: "Бот не получает обновления: проверьте доступность api.telegram.org и токен бота. Уведомления в Telegram будут копиться в очереди."
+        labels:
+          severity: warning
+        isPaused: false
+      - uid: delivery-queue-stuck
+        title: "Очередь доставки застряла"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(notification_queue_oldest_pending_age_seconds)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 900'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: "Самое старое уведомление ждёт отправки больше 15 минут"
+          description: "Воркер доставки не справляется или канал недоступен (идут повторы). Проверьте notification-service и внешние каналы."
+        labels:
+          severity: warning
+        isPaused: false
+      - uid: outbox-stuck
+        title: "Очередь outbox не публикуется"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(outbox_oldest_unpublished_age_seconds)'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 300'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 2m
+        annotations:
+          summary: "События не публикуются в Kafka больше 5 минут"
+          description: "Проверьте Kafka и Schema Registry, а также логи checker-worker."
+        labels:
+          severity: critical
+        isPaused: false
+      - uid: kafka-lag
+        title: "Консьюмер Kafka отстаёт"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(kafka_consumer_fetch_manager_records_lag_max{application="notification-service"})'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 50'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Отставание консьюмера notification-service больше 50 сообщений"
+          description: "Приём событий из Kafka замедлился или остановился: проверьте базу данных notification-service и логи."
+        labels:
+          severity: warning
+        isPaused: false
+  - orgId: 1
+    name: logs
+    folder: Monitoring Platform
+    interval: 1m
+    rules:
+      - uid: error-spike
+        title: "Всплеск ошибок в логах"
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'sum by (application) (increase(logback_events_total{level="error"}[5m]))'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: '__expr__'
+            model:
+              datasource:
+                type: __expr__
+                uid: '__expr__'
+              expression: '$A > 5'
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
+              type: math
+        noDataState: OK
+        execErrState: Alerting
+        for: 0s
+        annotations:
+          summary: "В сервисе {{ $labels.application }} больше 5 ошибок за 5 минут"
+          description: "Откройте логи сервиса; по traceId из строки лога трассу можно найти в Zipkin."
+        labels:
+          severity: warning
+        isPaused: false

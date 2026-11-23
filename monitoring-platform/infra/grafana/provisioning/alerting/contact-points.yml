@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Операторские оповещения идут напрямую из Grafana по SMTP, а не через notification-service:
+# если сломается именно он, об этом нужно узнать независимым путём.
+# В разработке письма попадают в Mailpit (http://localhost:8025).
+contactPoints:
+  - orgId: 1
+    name: ops-email
+    receivers:
+      - uid: ops-email
+        type: email
+        settings:
+          # Несколько адресов разделяются точкой с запятой
+          addresses: ops@monitoring.local
+          # Одно письмо на все сработавшие правила группы, а не по письму на каждое
+          singleEmail: true
+        disableResolveMessage: false
