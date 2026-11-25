@@ -19,6 +19,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 import java.net.ConnectException;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -122,7 +123,7 @@ class EmailChannelSenderTest {
             .setUserId("e754da5a-9fb3-47e2-b1f3-68d6163ecc45")
             .setEventType(type)
             .setTargetUrl("https://example.com")
-            .setOccurredAt(1_700_000_000_000L)
+            .setOccurredAt(Instant.ofEpochMilli(1_700_000_000_000L))
             .setDetails(details)
             .build();
     }

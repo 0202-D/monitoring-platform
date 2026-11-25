@@ -35,7 +35,7 @@ public class AlertMessageFormatter {
             text.append("\nПричина: ").append(truncate(details));
         }
 
-        text.append("\nВремя: ").append(TIME_FORMAT.format(Instant.ofEpochMilli(event.getOccurredAt())));
+        text.append("\nВремя: ").append(TIME_FORMAT.format(event.getOccurredAt()));
         return text.toString();
     }
 

@@ -15,7 +15,9 @@
       }
     },
     { "name": "targetUrl", "type": "string" },
-    { "name": "occurredAt", "type": "long", "logicalType": "timestamp-millis" },
+    { "name": "occurredAt",
+      "type": { "type": "long", "logicalType": "timestamp-millis" },
+      "doc": "Момент смены статуса (UTC). Логический тип timestamp-millis вложен в type: на проводе по-прежнему long, поэтому схема совместима с уже опубликованными сообщениями; в Java поле имеет тип Instant" },
     { "name": "details", "type": ["null", "string"], "default": null,
       "doc": "Например, текст ошибки при DOWN или дата истечения SSL" }
   ]

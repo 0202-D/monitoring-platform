@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-index-check-result-checked-at
+      author: platform
+      comment: >
+        Индекс для политики хранения: задание очистки находит старые проверки по checked_at
+        без полного просмотра таблицы. Существующий индекс (monitor_id, checked_at DESC)
+        для этого не подходит: он начинается с monitor_id, а очистка идёт по всем мониторам.
+        Индекс создаётся на родительской таблице и распространяется на все её секции.
+      changes:
+        - sql:
+            sql: CREATE INDEX idx_check_result_checked_at ON check_result (checked_at)
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_check_result_checked_at

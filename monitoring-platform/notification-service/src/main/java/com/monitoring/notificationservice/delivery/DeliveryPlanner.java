@@ -86,7 +86,7 @@ public class DeliveryPlanner {
 
             boolean inserted = deliveryRepository.insertIfAbsent(new NewDelivery(
                 event.getEventId(), type, userId, event.getMonitorId(), event.getEventType().name(),
-                event.getTargetUrl(), event.getDetails(), Instant.ofEpochMilli(event.getOccurredAt()),
+                event.getTargetUrl(), event.getDetails(), event.getOccurredAt(),
                 traceContext));
 
             if (inserted) {

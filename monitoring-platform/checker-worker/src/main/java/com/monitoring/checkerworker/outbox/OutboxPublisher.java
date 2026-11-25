@@ -177,7 +177,7 @@ public class OutboxPublisher {
             .setUserId(json.get("userId").asText())
             .setEventType(EventType.valueOf(json.get("eventType").asText()))
             .setTargetUrl(json.get("targetUrl").asText())
-            .setOccurredAt(Instant.parse(json.get("occurredAt").asText()).toEpochMilli())
+            .setOccurredAt(Instant.parse(json.get("occurredAt").asText()))
             // В outbox пустая строка означает "деталей нет"; в Avro-схеме
             // поле nullable, поэтому передаём настоящий null.
             .setDetails(details.isEmpty() ? null : details)

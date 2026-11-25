@@ -173,7 +173,7 @@ public class DeliveryWorker {
             .setUserId(delivery.userId().toString())
             .setEventType(EventType.valueOf(delivery.eventType()))
             .setTargetUrl(delivery.targetUrl())
-            .setOccurredAt(delivery.occurredAt().toEpochMilli())
+            .setOccurredAt(delivery.occurredAt())
             .setDetails(delivery.details())
             .build();
     }

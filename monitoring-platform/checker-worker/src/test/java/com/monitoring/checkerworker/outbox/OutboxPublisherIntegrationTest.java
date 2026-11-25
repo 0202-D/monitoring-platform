@@ -103,7 +103,7 @@ class OutboxPublisherIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(down.getUserId()).isEqualTo(SUBJECT);
         assertThat(down.getTargetUrl()).isEqualTo("https://example.com");
         assertThat(down.getDetails()).isEqualTo("ConnectException");
-        assertThat(down.getOccurredAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z").toEpochMilli());
+        assertThat(down.getOccurredAt()).isEqualTo(Instant.parse("2026-01-01T00:00:00Z"));
 
         // пустая строка в outbox означает "деталей нет": в Avro это настоящий null
         assertThat(sent.get(1).getEventType()).isEqualTo(EventType.MONITOR_UP);
