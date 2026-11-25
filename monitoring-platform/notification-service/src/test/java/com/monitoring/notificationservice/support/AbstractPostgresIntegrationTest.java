@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 /**
  * Без Docker интеграционные тесты ПРОПУСКАЮТСЯ, а не падают: unit-тесты
  * по-прежнему можно гонять где угодно.
+ *
  * Исключение — переменная окружения REQUIRE_DOCKER=true (её выставляет CI):
  * там отсутствие Docker означает сломанное окружение, и молчаливый пропуск
  * тестов дал бы зелёную сборку, которая ничего не проверила.
@@ -34,6 +35,7 @@ public abstract class AbstractPostgresIntegrationTest {
 
     @BeforeEach
     protected void cleanTables() {
-        jdbc.execute("TRUNCATE notification_delivery, user_channel, telegram_link_token, email_verification_token, processed_event CASCADE");
+        jdbc.execute("TRUNCATE notification_delivery, user_channel, telegram_link_token, "
+            + "email_verification_token CASCADE");
     }
 }

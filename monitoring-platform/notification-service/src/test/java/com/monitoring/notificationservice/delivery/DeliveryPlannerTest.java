@@ -148,7 +148,7 @@ class DeliveryPlannerTest {
             .setUserId(userId)
             .setEventType(EventType.MONITOR_DOWN)
             .setTargetUrl("https://example.com")
-            .setOccurredAt(OCCURRED_AT)
+            .setOccurredAt(Instant.ofEpochMilli(OCCURRED_AT))
             .setDetails("ConnectException")
             .build();
     }

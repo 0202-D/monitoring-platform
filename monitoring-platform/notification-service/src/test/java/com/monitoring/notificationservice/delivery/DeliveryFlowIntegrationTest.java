@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -192,7 +193,7 @@ class DeliveryFlowIntegrationTest extends AbstractPostgresIntegrationTest {
             .setUserId(USER_ID.toString())
             .setEventType(type)
             .setTargetUrl("https://example.com")
-            .setOccurredAt(1_700_000_000_000L)
+            .setOccurredAt(Instant.ofEpochMilli(1_700_000_000_000L))
             .setDetails(type == EventType.MONITOR_DOWN ? "ConnectException" : null)
             .build();
     }

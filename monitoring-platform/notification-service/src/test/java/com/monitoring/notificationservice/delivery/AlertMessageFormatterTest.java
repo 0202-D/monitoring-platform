@@ -4,6 +4,8 @@ import com.monitoring.events.EventType;
 import com.monitoring.events.MonitorStatusEvent;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AlertMessageFormatterTest {
@@ -64,7 +66,7 @@ class AlertMessageFormatterTest {
             .setUserId("user-1")
             .setEventType(type)
             .setTargetUrl("https://example.com")
-            .setOccurredAt(OCCURRED_AT)
+            .setOccurredAt(Instant.ofEpochMilli(OCCURRED_AT))
             .setDetails(details)
             .build();
     }

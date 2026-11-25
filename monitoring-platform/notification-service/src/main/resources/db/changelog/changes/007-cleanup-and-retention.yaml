@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-index-delivery-finished-at
+      author: platform
+      comment: >
+        Индекс для политики хранения: задание очистки находит завершённые строки очереди
+        по finished_at. Частичный (только завершённые): ожидающих отправки строк в нём нет,
+        он остаётся небольшим.
+      changes:
+        - sql:
+            sql: >
+              CREATE INDEX idx_delivery_finished ON notification_delivery (finished_at)
+              WHERE status <> 'PENDING'
+      rollback:
+        - sql:
+            sql: DROP INDEX idx_delivery_finished
+
+  - changeSet:
+      id: 007.1-drop-processed-event
+      author: platform
+      comment: >
+        Журнал processed_event заменён уникальным ключом (event_id, channel_type) в очереди
+        доставки: идемпотентность теперь обеспечивает сама очередь, и таблица не используется.
+      changes:
+        - dropTable:
+            tableName: processed_event
+      rollback:
+        - sql:
+            sql: >
+              CREATE TABLE processed_event (
+                event_id VARCHAR(64) NOT NULL,
+                channel_type VARCHAR(20) NOT NULL,
+                processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                CONSTRAINT pk_processed_event PRIMARY KEY (event_id, channel_type)
+              )
+
+  - changeSet:
+      id: 007.2-drop-user-channel-is-active
+      author: platform
+      comment: >
+        Колонка is_active заменена парой enabled (выбор пользователя) и status (состояние
+        системы) в миграции 004; код её больше не читает.
+      changes:
+        - dropColumn:
+            tableName: user_channel
+            columnName: is_active
+      rollback:
+        - addColumn:
+            tableName: user_channel
+            columns:
+              - column:
+                  name: is_active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

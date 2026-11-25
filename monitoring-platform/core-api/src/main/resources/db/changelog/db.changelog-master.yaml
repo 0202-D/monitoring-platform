@@ -9,3 +9,6 @@ databaseChangeLog:
       file: db/changelog/changes/004-create-outbox-event.yaml
   - include:
       file: db/changelog/changes/005-add-outbox-trace-context.yaml
+  - include:
+      file: db/changelog/changes/006-index-check-result-checked-at.yaml
+

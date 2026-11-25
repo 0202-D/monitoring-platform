@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-create-notification-delivery.yaml
   - include:
       file: db/changelog/changes/006-add-email-channel.yaml
+  - include:
+      file: db/changelog/changes/007-cleanup-and-retention.yaml
