@@ -29,3 +29,7 @@ web-ui/src/main/bundles/
 web-ui/vite.generated.ts
 web-ui/types.d.ts
 web-ui/package-lock.json
+
+# Kilo
+.kilocodeignore
+.kilo\kilo.jsonc
