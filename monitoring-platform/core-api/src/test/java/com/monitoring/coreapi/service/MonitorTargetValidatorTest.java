@@ -3,6 +3,7 @@ package com.monitoring.coreapi.service;
 import com.monitoring.coreapi.entity.Monitor.MonitorType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -74,6 +75,35 @@ class MonitorTargetValidatorTest {
     @ValueSource(strings = {"https://", "/path"})
     void rejectsSslTargetsWithoutHost(String target) {
         assertBadRequest(() -> MonitorTargetValidator.normalizeAndValidate(MonitorType.SSL, target));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "example.com | example.com",
+            " Example.COM. | example.com",
+            "example.com mx | example.com MX",
+            "example.com   MX   mail.example.com | example.com MX mail.example.com",
+            "example.com A 93.184.216.34 | example.com A 93.184.216.34",
+            "_dmarc.example.com TXT v=DMARC1 | _dmarc.example.com TXT v=DMARC1"
+    })
+    void normalizesValidDnsTargets(String raw, String expected) {
+        assertThat(MonitorTargetValidator.normalizeAndValidate(MonitorType.DNS, raw)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "localhost",                      // нет точки: не доменное имя
+            "example.com SRV",                // тип не поддерживается
+            "example.com A not-an-ip",
+            "example.com A 999.1.1.1",
+            "example.com AAAA 1.2.3.4",       // IPv4 в записи AAAA
+            "example.com MX 1 2 mail.example.com",
+            "-bad.example.com",
+            "a..example.com",
+            "http://example.com"
+    })
+    void rejectsInvalidDnsTargets(String target) {
+        assertBadRequest(() -> MonitorTargetValidator.normalizeAndValidate(MonitorType.DNS, target));
     }
 
     private void assertBadRequest(Runnable action) {

@@ -208,6 +208,7 @@ public class MonitorsView extends VerticalLayout {
         Span typeLabel = new Span("Тип: " + monitor.type());
 
         TextField targetUrl = new TextField("URL / хост");
+        applyTargetHint(targetUrl, monitor.type());
         targetUrl.setValue(monitor.targetUrl());
         targetUrl.setWidthFull();
 
@@ -293,6 +294,8 @@ public class MonitorsView extends VerticalLayout {
         type.setRequiredIndicatorVisible(true);
 
         TextField targetUrl = new TextField("URL / хост");
+        applyTargetHint(targetUrl, type.getValue());
+        type.addValueChangeListener(e -> applyTargetHint(targetUrl, e.getValue()));
         targetUrl.setPlaceholder("https://example.com");
         targetUrl.setRequiredIndicatorVisible(true);
         targetUrl.setWidthFull();
@@ -353,5 +356,26 @@ public class MonitorsView extends VerticalLayout {
     private void showSuccess(String message) {
         Notification notification = Notification.show(message, 3000, Notification.Position.BOTTOM_END);
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+    }
+
+    /** Подсказка под полем адреса зависит от типа монитора: у каждого свой формат цели. */
+    private void applyTargetHint(TextField field, String type) {
+        switch (type == null ? "" : type) {
+            case "HTTP" -> {
+                field.setPlaceholder("https://example.com");
+                field.setHelperText("Полный адрес с http:// или https://");
+            }
+            case "SSL" -> {
+                field.setPlaceholder("example.com");
+                field.setHelperText("Домен; проверка идёт по порту 443");
+            }
+            case "DNS" -> {
+                field.setPlaceholder("example.com");
+                field.setHelperText("Домен. Можно указать тип записи и ожидаемое значение: "
+                        + "example.com MX mail.example.com");
+            }
+            default -> {
+            }
+        }
     }
 }

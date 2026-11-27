@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,7 +29,8 @@ public class GlobalExceptionHandler {
         if (status == null) {
             status = HttpStatus.INTERNAL_SERVER_ERROR;
         }
-        return build(status, ex.getReason(), request);
+        String message = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
+        return build(status, message, request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -73,8 +75,28 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest request) {
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            if (status != null) {
+                return ResponseEntity.status(status)
+                        .headers(errorResponse.getHeaders())
+                        .body(ApiError.of(status.value(), status.getReasonPhrase(), messageFor(status),
+                                request.getRequestURI(), List.of()));
+            }
+        }
         log.error("Необработанное исключение на {}", request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера", request);
+    }
+
+    private String messageFor(HttpStatus status) {
+        return switch (status) {
+            case NOT_FOUND -> "Ресурс не найден";
+            case METHOD_NOT_ALLOWED -> "Метод запроса не поддерживается";
+            case NOT_ACCEPTABLE -> "Недопустимый формат ответа";
+            case UNSUPPORTED_MEDIA_TYPE -> "Неподдерживаемый тип содержимого";
+            case BAD_REQUEST -> "Некорректный запрос";
+            default -> status.getReasonPhrase();
+        };
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest request) {

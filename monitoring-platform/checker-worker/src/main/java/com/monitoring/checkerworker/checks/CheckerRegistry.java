@@ -15,15 +15,11 @@ public class CheckerRegistry {
     // синхронизации (publication через final-поле конструктора).
     private final Map<String, Checker> byType;
 
-    public CheckerRegistry(HttpChecker httpChecker, SslChecker sslChecker) {
+    public CheckerRegistry(HttpChecker httpChecker, SslChecker sslChecker, DnsChecker dnsChecker) {
         this.byType = Map.of(
             "HTTP", httpChecker,
-            "SSL", sslChecker
-            // DNS сознательно не включён: WHOIS-проверка домена требует
-            // отдельного протокола/библиотеки и вынесена в отдельную
-            // задачу на будущее (см. CheckExecutionService — мониторы
-            // типа DNS сейчас пропускаются с явным предупреждением
-            // в логе, а не падают и не притворяются, что работают).
+            "SSL", sslChecker,
+            "DNS", dnsChecker
         );
     }
 
