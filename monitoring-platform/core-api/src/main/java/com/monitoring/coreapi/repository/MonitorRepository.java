@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface MonitorRepository extends JpaRepository<Monitor, UUID> {
     List<Monitor> findByUserId(UUID userId);
+    long countByUserId(UUID userId);
     // Ownership-check встроен прямо в запрос: если монитор существует,
     // но принадлежит другому пользователю, возвращается empty — сервис
     // не узнаёт разницу между "не найдено" и "чужое", что и правильно

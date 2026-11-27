@@ -29,7 +29,7 @@ public class MonitorService {
     public Monitor createMonitor(AppUser owner, Monitor.MonitorType type, String targetUrl, int intervalSeconds) {
         targetUrl = MonitorTargetValidator.normalizeAndValidate(type, targetUrl);
         if (owner.getPlan() == AppUser.Plan.FREE) {
-            long existing = monitorRepository.findByUserId(owner.getId()).size();
+            long existing = monitorRepository.countByUserId(owner.getId());
             if (existing >= FREE_PLAN_MONITOR_LIMIT) {
                 throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
                     "Достигнут лимит FREE-плана (%d мониторов). Оформите PRO для увеличения лимита."
